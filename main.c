@@ -3,8 +3,34 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <stdbool.h>
-#include <termios.h>
-#include <fcntl.h>
+#include <SDL2/SDL.h>
+
+// Constantes do jogo
+#define LARGURA 800
+#define ALTURA 600
+#define SOLDIERS 10
+
+// Estrutura para posição
+typedef struct {
+    int x;
+    int y;
+} Posicao;
+
+// Estrutura do helicóptero
+typedef struct {
+    Posicao pos;
+    bool ativo;
+    SDL_Texture* texture;
+} Helicoptero;
+
+// Variáveis globais do jogo
+SDL_Window* window = NULL;
+SDL_Renderer* renderer = NULL;
+Helicoptero helicoptero = {
+    .pos = {.x = 50, .y = ALTURA/2},
+    .ativo = true,
+    .texture = NULL
+};
 
 // Definição dos mutexes e variáveis de condição
 pthread_mutex_t mutex_deposito = PTHREAD_MUTEX_INITIALIZER;
@@ -16,63 +42,46 @@ pthread_cond_t cond_recarga = PTHREAD_COND_INITIALIZER;
 bool jogo_ativo = true;
 char tecla_pressionada = 0;
 
-// Função para configurar terminal em modo não canônico (Unix)
-void configurar_terminal() {
-    struct termios t;
-    tcgetattr(STDIN_FILENO, &t);
-    t.c_lflag &= ~(ICANON | ECHO); // Desabilita buffer de linha e echo
-    tcsetattr(STDIN_FILENO, TCSANOW, &t);
-}
-
-// Função para restaurar configuração original do terminal
-void restaurar_terminal() {
-    struct termios t;
-    tcgetattr(STDIN_FILENO, &t);
-    t.c_lflag |= (ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &t);
-}
-
-// Função para verificar se há tecla pressionada (sem bloqueio)
-int kbhit() {
-    struct termios oldt, newt;
-    int ch;
-    int oldf;
-    
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    
-    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-    
-    ch = getchar();
-    
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    fcntl(STDIN_FILENO, F_SETFL, oldf);
-    
-    if (ch != EOF) {
-        ungetc(ch, stdin);
-        return 1;
+// Função para inicializar SDL
+bool init_sdl() {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        printf("SDL não pôde ser inicializado! SDL_Error: %s\n", SDL_GetError());
+        return false;
     }
-    
-    return 0;
+
+    window = SDL_CreateWindow("Resgate de Soldados", 
+                            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                            LARGURA, ALTURA, SDL_WINDOW_SHOWN);
+    if (!window) {
+        printf("Janela não pôde ser criada! SDL_Error: %s\n", SDL_GetError());
+        return false;
+    }
+
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (!renderer) {
+        printf("Renderer não pôde ser criado! SDL_Error: %s\n", SDL_GetError());
+        return false;
+    }
+
+    // Carregar textura do helicóptero (temporariamente um retângulo)
+    helicoptero.texture = SDL_CreateTexture(renderer, 
+                                          SDL_PIXELFORMAT_RGBA8888,
+                                          SDL_TEXTUREACCESS_TARGET,
+                                          40, 40);
+    SDL_SetRenderTarget(renderer, helicoptero.texture);
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    SDL_RenderFillRect(renderer, NULL);
+    SDL_SetRenderTarget(renderer, NULL);
+
+    return true;
 }
 
-
-// Função da Thread principal
-void* thread_principal(void* arg) {
-    while (jogo_ativo) {
-        if (kbhit()) {
-            tecla_pressionada = getchar();
-            if (tecla_pressionada == 'q') {
-                jogo_ativo = false; // Sair do jogo
-            }
-            // Pode incluir outras teclas: wasd para mover, espaço para atirar etc.
-        }
-        usleep(10000);
-    }
-    return NULL;
+// Função para limpar recursos SDL
+void cleanup_sdl() {
+    if (helicoptero.texture) SDL_DestroyTexture(helicoptero.texture);
+    if (renderer) SDL_DestroyRenderer(renderer);
+    if (window) SDL_DestroyWindow(window);
+    SDL_Quit();
 }
 
 // Função da Thread do helicóptero
@@ -81,99 +90,87 @@ void* thread_helicoptero(void* arg) {
         pthread_mutex_lock(&mutex_render);
         switch (tecla_pressionada) {
             case 'w':
-                printf("Helicóptero sobe\n");
+                if (helicoptero.pos.y > 0) helicoptero.pos.y -= 5;
                 break;
             case 's':
-                printf("Helicóptero desce\n");
+                if (helicoptero.pos.y < ALTURA - 40) helicoptero.pos.y += 5;
                 break;
             case 'a':
-                printf("Helicóptero para esquerda\n");
+                if (helicoptero.pos.x > 0) helicoptero.pos.x -= 5;
                 break;
             case 'd':
-                printf("Helicóptero para direita\n");
+                if (helicoptero.pos.x < LARGURA - 40) helicoptero.pos.x += 5;
                 break;
         }
-        tecla_pressionada = 0; // Reseta tecla
+        tecla_pressionada = 0;
         pthread_mutex_unlock(&mutex_render);
         usleep(50000);
     }
     return NULL;
 }
 
-// Função da Thread de bateria
-void* thread_bateria(void* arg) {
-    int id = *(int*)arg;
-    while (jogo_ativo) {
-        // Movimenta até o depósito
-
-        pthread_mutex_lock(&mutex_ponte);
-        // Usa ponte
-        pthread_mutex_unlock(&mutex_ponte);
-
-        pthread_mutex_lock(&mutex_deposito);
-        // Solicita recarga
-        pthread_cond_wait(&cond_recarga, &mutex_deposito);
-        // Recebe recarga
-        pthread_mutex_unlock(&mutex_deposito);
-
-        pthread_mutex_lock(&mutex_ponte);
-        // Volta pela ponte
-        pthread_mutex_unlock(&mutex_ponte);
-
-        // Movimenta de volta e atira foguetes
-        usleep(100000);
-    }
-    return NULL;
-}
-
-// Função da Thread do recarregador
-void* thread_recarregador(void* arg) {
-    while (jogo_ativo) {
-        pthread_mutex_lock(&mutex_deposito);
-        // Aguarda uma bateria no depósito
-        usleep(100000 + rand() % 400000); // Tempo aleatório de 0.1s a 0.5s
-        pthread_cond_signal(&cond_recarga);
-        pthread_mutex_unlock(&mutex_deposito);
-    }
-    return NULL;
-}
-
-// Função da Thread de foguete
-void* thread_foguete(void* arg) {
-    while (jogo_ativo) {
-        // Move foguete na tela
-        // Verifica colisões
-        usleep(30000);
-    }
-    pthread_exit(NULL);
-}
-
-// Função opcional de renderização
+// Função da Thread de renderização
 void* thread_render(void* arg) {
     while (jogo_ativo) {
         pthread_mutex_lock(&mutex_render);
-        // Desenha tela
+        
+        // Limpar tela
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        // Desenhar helicóptero
+        SDL_Rect heli_rect = {
+            helicoptero.pos.x,
+            helicoptero.pos.y,
+            40, 40
+        };
+        SDL_RenderCopy(renderer, helicoptero.texture, NULL, &heli_rect);
+
+        // Atualizar tela
+        SDL_RenderPresent(renderer);
+        
         pthread_mutex_unlock(&mutex_render);
-        usleep(16666); // Aproximadamente 60 FPS
+        usleep(16666); // ~60 FPS
     }
     return NULL;
 }
 
-
 int main() {
-    pthread_t t_principal, t_heli;
+    if (!init_sdl()) {
+        return 1;
+    }
 
-    configurar_terminal(); // Configura terminal no início
+    pthread_t t_heli, t_render;
 
-    pthread_create(&t_principal, NULL, thread_principal, NULL);
+    // Criar threads
     pthread_create(&t_heli, NULL, thread_helicoptero, NULL);
+    pthread_create(&t_render, NULL, thread_render, NULL);
 
-    pthread_join(t_principal, NULL);
-    jogo_ativo = false;
+    // Loop principal (na thread principal)
+    SDL_Event event;
+    while (jogo_ativo) {
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                jogo_ativo = false;
+            }
+            else if (event.type == SDL_KEYDOWN) {
+                switch (event.key.keysym.sym) {
+                    case SDLK_w: tecla_pressionada = 'w'; break;
+                    case SDLK_s: tecla_pressionada = 's'; break;
+                    case SDLK_a: tecla_pressionada = 'a'; break;
+                    case SDLK_d: tecla_pressionada = 'd'; break;
+                    case SDLK_q: jogo_ativo = false; break;
+                }
+            }
+        }
+        usleep(10000);
+    }
 
+    // Aguardar threads terminarem
     pthread_join(t_heli, NULL);
+    pthread_join(t_render, NULL);
 
-    restaurar_terminal(); // Restaura terminal ao final
+    cleanup_sdl();
 
     pthread_mutex_destroy(&mutex_deposito);
     pthread_mutex_destroy(&mutex_ponte);
