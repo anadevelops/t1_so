@@ -21,6 +21,12 @@ Um helicóptero, guiado pelo jogador, deve resgatar soldados enquanto desvia de 
   sudo apt-get install libsdl2-dev
   ```
 
+  No Windows, para instalar através de linha de código é necessário instalar algum software como o MSYS2. Tendo ele instalado, execute no MSYS MinGW 64-bit:
+
+  ```bash
+  pacman -S mingw-w64-x86_64-SDL2
+  ```
+
 - **SDL2_image** instalada  
   No macOS, instale via Homebrew:
 
@@ -32,6 +38,12 @@ Um helicóptero, guiado pelo jogador, deve resgatar soldados enquanto desvia de 
 
   ```bash
   sudo apt-get install libsdl2-image-dev
+  ```
+
+  No Windows:
+
+  ```bash
+  pacman -S mingw-w64-x86_64-SDL2_image
   ```
 
 ## Compilação
@@ -48,6 +60,12 @@ Linux (não sei se funciona porque não consegui testar):
 
 ```bash
 gcc main.c -o jogo -pthread $(sdl2-config --cflags --libs) -lSDL2_imag
+```
+
+Windows:
+
+```bash
+gcc main.c -o jogo.exe -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -mwindows -pthread
 ```
 
 > Se estiver em outro sistema, ajuste os caminhos de acordo com a instalação da SDL2.
