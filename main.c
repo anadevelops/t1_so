@@ -10,8 +10,8 @@
 #define LARGURA 800
 #define ALTURA 600
 #define SOLDIERS 10
-#define HELI_W 40
-#define HELI_H 40
+#define HELI_W 60
+#define HELI_H 60
 
 // Estrutura para posição
 typedef struct {
