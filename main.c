@@ -4,11 +4,14 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 
 // Constantes do jogo
 #define LARGURA 800
 #define ALTURA 600
 #define SOLDIERS 10
+#define HELI_W 40
+#define HELI_H 40
 
 // Estrutura para posição
 typedef struct {
@@ -42,10 +45,14 @@ pthread_cond_t cond_recarga = PTHREAD_COND_INITIALIZER;
 bool jogo_ativo = true;
 char tecla_pressionada = 0;
 
-// Função para inicializar SDL
+// Função para inicializar SDL e SDL_image
 bool init_sdl() {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         printf("SDL não pôde ser inicializado! SDL_Error: %s\n", SDL_GetError());
+        return false;
+    }
+    if (IMG_Init(IMG_INIT_PNG) == 0) {
+        printf("Erro ao inicializar SDL_image: %s\n", IMG_GetError());
         return false;
     }
 
@@ -63,15 +70,20 @@ bool init_sdl() {
         return false;
     }
 
-    // Carregar textura do helicóptero (temporariamente um retângulo)
-    helicoptero.texture = SDL_CreateTexture(renderer, 
+    // Carregar textura do helicóptero
+    helicoptero.texture = IMG_LoadTexture(renderer, "helicoptero.png");
+    if (!helicoptero.texture) {
+        printf("Erro ao carregar imagem do helicóptero: %s\n", IMG_GetError());
+        // Se não encontrar a imagem, cria um retângulo vermelho como fallback
+        helicoptero.texture = SDL_CreateTexture(renderer, 
                                           SDL_PIXELFORMAT_RGBA8888,
                                           SDL_TEXTUREACCESS_TARGET,
-                                          40, 40);
-    SDL_SetRenderTarget(renderer, helicoptero.texture);
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    SDL_RenderFillRect(renderer, NULL);
-    SDL_SetRenderTarget(renderer, NULL);
+                                          HELI_W, HELI_H);
+        SDL_SetRenderTarget(renderer, helicoptero.texture);
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        SDL_RenderFillRect(renderer, NULL);
+        SDL_SetRenderTarget(renderer, NULL);
+    }
 
     return true;
 }
@@ -81,6 +93,7 @@ void cleanup_sdl() {
     if (helicoptero.texture) SDL_DestroyTexture(helicoptero.texture);
     if (renderer) SDL_DestroyRenderer(renderer);
     if (window) SDL_DestroyWindow(window);
+    IMG_Quit();
     SDL_Quit();
 }
 
@@ -93,13 +106,13 @@ void* thread_helicoptero(void* arg) {
                 if (helicoptero.pos.y > 0) helicoptero.pos.y -= 5;
                 break;
             case 's':
-                if (helicoptero.pos.y < ALTURA - 40) helicoptero.pos.y += 5;
+                if (helicoptero.pos.y < ALTURA - HELI_H) helicoptero.pos.y += 5;
                 break;
             case 'a':
                 if (helicoptero.pos.x > 0) helicoptero.pos.x -= 5;
                 break;
             case 'd':
-                if (helicoptero.pos.x < LARGURA - 40) helicoptero.pos.x += 5;
+                if (helicoptero.pos.x < LARGURA - HELI_W) helicoptero.pos.x += 5;
                 break;
         }
         tecla_pressionada = 0;
@@ -122,7 +135,7 @@ void* thread_render(void* arg) {
         SDL_Rect heli_rect = {
             helicoptero.pos.x,
             helicoptero.pos.y,
-            40, 40
+            HELI_W, HELI_H
         };
         SDL_RenderCopy(renderer, helicoptero.texture, NULL, &heli_rect);
 

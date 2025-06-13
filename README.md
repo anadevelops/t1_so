@@ -21,6 +21,19 @@ Um helicóptero, guiado pelo jogador, deve resgatar soldados enquanto desvia de 
   sudo apt-get install libsdl2-dev
   ```
 
+- **SDL2_image** instalada  
+  No macOS, instale via Homebrew:
+
+  ```bash
+  brew install sdl2_image
+  ```
+
+  No Linux:
+
+  ```bash
+  sudo apt-get install libsdl2-image-dev
+  ```
+
 ## Compilação
 
 No terminal, dentro da pasta do projeto, execute:
@@ -28,13 +41,13 @@ No terminal, dentro da pasta do projeto, execute:
 macOS:
 
 ```bash
-gcc main.c -o jogo -pthread -I/opt/homebrew/include -L/opt/homebrew/lib -lSDL2
+gcc main.c -o jogo -pthread -I/opt/homebrew/include -L/opt/homebrew/lib -lSDL2 -lSDL2_image
 ```
 
 Linux (não sei se funciona porque não consegui testar):
 
 ```bash
-gcc main.c -o jogo -pthread $(sdl2-config --cflags --libs)
+gcc main.c -o jogo -pthread $(sdl2-config --cflags --libs) -lSDL2_imag
 ```
 
 > Se estiver em outro sistema, ajuste os caminhos de acordo com a instalação da SDL2.
