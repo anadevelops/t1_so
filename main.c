@@ -6,26 +6,12 @@
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include "helicoptero.h"
 
 // Constantes do jogo
 #define LARGURA 800
 #define ALTURA 600
 #define SOLDIERS 10
-#define HELI_W 60
-#define HELI_H 60
-
-// Estrutura para posição
-typedef struct {
-    int x;
-    int y;
-} Posicao;
-
-// Estrutura do helicóptero
-typedef struct {
-    Posicao pos;
-    bool ativo;
-    SDL_Texture* texture;
-} Helicoptero;
 
 // Variáveis globais do jogo
 SDL_Window* window = NULL;
@@ -71,27 +57,14 @@ bool init_sdl() {
         return false;
     }
 
-    // Carregar textura do helicóptero
-    helicoptero.texture = IMG_LoadTexture(renderer, "helicoptero.png");
-    if (!helicoptero.texture) {
-        printf("Erro ao carregar imagem do helicóptero: %s\n", IMG_GetError());
-        // Se não encontrar a imagem, cria um retângulo vermelho como fallback
-        helicoptero.texture = SDL_CreateTexture(renderer, 
-                                          SDL_PIXELFORMAT_RGBA8888,
-                                          SDL_TEXTUREACCESS_TARGET,
-                                          HELI_W, HELI_H);
-        SDL_SetRenderTarget(renderer, helicoptero.texture);
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-        SDL_RenderFillRect(renderer, NULL);
-        SDL_SetRenderTarget(renderer, NULL);
-    }
-
+    // Carregar textura do helicóptero usando o módulo
+    carregar_helicoptero(renderer, &helicoptero, "helicoptero.png");
     return true;
 }
 
 // Função para limpar recursos SDL
 void cleanup_sdl() {
-    if (helicoptero.texture) SDL_DestroyTexture(helicoptero.texture);
+    liberar_helicoptero(&helicoptero);
     if (renderer) SDL_DestroyRenderer(renderer);
     if (window) SDL_DestroyWindow(window);
     IMG_Quit();
@@ -102,20 +75,7 @@ void cleanup_sdl() {
 void* thread_helicoptero(void* arg) {
     while (jogo_ativo) {
         pthread_mutex_lock(&mutex_render);
-        switch (tecla_pressionada) {
-            case 'w':
-                if (helicoptero.pos.y > 0) helicoptero.pos.y -= 5;
-                break;
-            case 's':
-                if (helicoptero.pos.y < ALTURA - HELI_H) helicoptero.pos.y += 5;
-                break;
-            case 'a':
-                if (helicoptero.pos.x > 0) helicoptero.pos.x -= 5;
-                break;
-            case 'd':
-                if (helicoptero.pos.x < LARGURA - HELI_W) helicoptero.pos.x += 5;
-                break;
-        }
+        mover_helicoptero(&helicoptero, tecla_pressionada);
         tecla_pressionada = 0;
         pthread_mutex_unlock(&mutex_render);
         usleep(50000);
@@ -127,22 +87,13 @@ void* thread_helicoptero(void* arg) {
 void* thread_render(void* arg) {
     while (jogo_ativo) {
         pthread_mutex_lock(&mutex_render);
-        
         // Limpar tela
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-
         // Desenhar helicóptero
-        SDL_Rect heli_rect = {
-            helicoptero.pos.x,
-            helicoptero.pos.y,
-            HELI_W, HELI_H
-        };
-        SDL_RenderCopy(renderer, helicoptero.texture, NULL, &heli_rect);
-
+        desenhar_helicoptero(renderer, &helicoptero);
         // Atualizar tela
         SDL_RenderPresent(renderer);
-        
         pthread_mutex_unlock(&mutex_render);
         usleep(16666); // ~60 FPS
     }

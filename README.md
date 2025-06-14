@@ -53,16 +53,16 @@ No terminal, dentro da pasta do projeto, execute:
 macOS:
 
 ```bash
-gcc main.c -o jogo -pthread -I/opt/homebrew/include -L/opt/homebrew/lib -lSDL2 -lSDL2_image
+gcc main.c helicoptero.c -o jogo -pthread -I/opt/homebrew/include -L/opt/homebrew/lib -lSDL2 -lSDL2_image
 ```
 
 Linux (não sei se funciona porque não consegui testar):
 
 ```bash
-gcc main.c -o jogo -pthread $(sdl2-config --cflags --libs) -lSDL2_imag
+gcc main.c helicoptero.c -o jogo -pthread $(sdl2-config --cflags --libs) -lSDL2_image
 ```
 
-Windows:
+Windows (não sei se funciona porque não consegui testar):
 
 ```bash
 gcc main.c -o jogo.exe -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -mwindows -pthread
