@@ -4,15 +4,10 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include "tipos.h"
 
 #define HELI_W 60
 #define HELI_H 30
-
-// Estrutura para posição
-typedef struct {
-    int x;
-    int y;
-} Posicao;
 
 // Estrutura do helicóptero
 typedef struct {

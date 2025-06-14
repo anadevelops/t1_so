@@ -6,12 +6,16 @@
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include "tipos.h"
 #include "helicoptero.h"
+#include "recarregador.h"
+#include "bateria.h"
 
 // Constantes do jogo
 #define LARGURA 800
 #define ALTURA 600
 #define SOLDIERS 10
+#define NUM_BATERIAS 2
 
 // Variáveis globais do jogo
 SDL_Window* window = NULL;
@@ -21,6 +25,20 @@ Helicoptero helicoptero = {
     .ativo = true,
     .texture = NULL
 };
+
+Recarregador recarregador = {
+    .pos = {.x = 100, .y = 500},  // Posição fixa
+    .ativo = true,
+    .ocupado = false,
+    .nivel = MEDIO,  // Nível médio por padrão
+    .tempo_recarga = 3000,
+    .tempo_atual = 0,
+    .bateria_conectada = NULL,
+    .texture = NULL
+};
+
+// Array de baterias
+Bateria baterias[NUM_BATERIAS];
 
 // Definição dos mutexes e variáveis de condição
 pthread_mutex_t mutex_deposito = PTHREAD_MUTEX_INITIALIZER;
@@ -59,12 +77,32 @@ bool init_sdl() {
 
     // Carregar textura do helicóptero usando o módulo
     carregar_helicoptero(renderer, &helicoptero, "helicoptero.png");
+    
+    // Carregar recarregador (sem imagem, será um retângulo vermelho)
+    carregar_recarregador(renderer, &recarregador, NULL);
+    inicializar_recarregador(&recarregador, MEDIO);  // Nível médio
+    
+    // Inicializar baterias
+    for (int i = 0; i < NUM_BATERIAS; i++) {
+        baterias[i].pos.x = 200 + i * 150;  // Posições espalhadas
+        baterias[i].pos.y = 520;
+        carregar_bateria(renderer, &baterias[i], NULL);
+        inicializar_bateria(&baterias[i], (NivelDificuldade)(i % 3));  // Cada bateria com nível diferente
+    }
+    
     return true;
 }
 
 // Função para limpar recursos SDL
 void cleanup_sdl() {
     liberar_helicoptero(&helicoptero);
+    liberar_recarregador(&recarregador);
+    
+    // Liberar baterias
+    for (int i = 0; i < NUM_BATERIAS; i++) {
+        liberar_bateria(&baterias[i]);
+    }
+    
     if (renderer) SDL_DestroyRenderer(renderer);
     if (window) SDL_DestroyWindow(window);
     IMG_Quit();
@@ -92,6 +130,12 @@ void* thread_render(void* arg) {
         SDL_RenderClear(renderer);
         // Desenhar helicóptero
         desenhar_helicoptero(renderer, &helicoptero);
+        // Desenhar recarregador fixo
+        desenhar_recarregador(renderer, &recarregador);
+        // Desenhar baterias
+        for (int i = 0; i < NUM_BATERIAS; i++) {
+            desenhar_bateria(renderer, &baterias[i]);
+        }
         // Atualizar tela
         SDL_RenderPresent(renderer);
         pthread_mutex_unlock(&mutex_render);
@@ -100,18 +144,61 @@ void* thread_render(void* arg) {
     return NULL;
 }
 
+// Função da Thread do recarregador
+void* thread_recarregador(void* arg) {
+    while (jogo_ativo) {
+        pthread_mutex_lock(&mutex_render);
+        
+        // Atualizar recarregador
+        atualizar_recarregador(&recarregador);
+        
+        // Detectar colisão com helicóptero
+        if (helicoptero.pos.x < recarregador.pos.x + REC_W &&
+            helicoptero.pos.x + HELI_W > recarregador.pos.x &&
+            helicoptero.pos.y < recarregador.pos.y + REC_H &&
+            helicoptero.pos.y + HELI_H > recarregador.pos.y) {
+            
+            printf("Helicóptero colidiu com o recarregador!\n");
+        }
+        
+        // Verificar colisões com baterias
+        for (int i = 0; i < NUM_BATERIAS; i++) {
+            if (baterias[i].ativa && !baterias[i].conectada) {
+                if (detectar_colisao_bateria_recarregador(&baterias[i], recarregador.pos, REC_W, REC_H)) {
+                    if (!recarregador.ocupado) {
+                        conectar_bateria(&recarregador, &baterias[i]);
+                    }
+                }
+            }
+        }
+        
+        pthread_mutex_unlock(&mutex_render);
+        usleep(100000); // Verificar colisão a cada 100ms
+    }
+    return NULL;
+}
+
 int main() {
+    printf("Iniciando o jogo...\n");
+    
     if (!init_sdl()) {
+        printf("Falha na inicialização do SDL!\n");
         return 1;
     }
+    
+    printf("SDL inicializado com sucesso!\n");
 
-    pthread_t t_heli, t_render;
+    pthread_t t_heli, t_render, t_rec;
 
     // Criar threads
+    printf("Criando threads...\n");
     pthread_create(&t_heli, NULL, thread_helicoptero, NULL);
     pthread_create(&t_render, NULL, thread_render, NULL);
+    pthread_create(&t_rec, NULL, thread_recarregador, NULL);
+    printf("Threads criadas!\n");
 
     // Loop principal (na thread principal)
+    printf("Iniciando loop principal...\n");
     SDL_Event event;
     while (jogo_ativo) {
         while (SDL_PollEvent(&event)) {
@@ -131,10 +218,13 @@ int main() {
         usleep(10000);
     }
 
+    printf("Finalizando threads...\n");
     // Aguardar threads terminarem
     pthread_join(t_heli, NULL);
     pthread_join(t_render, NULL);
+    pthread_join(t_rec, NULL);
 
+    printf("Limpando recursos...\n");
     cleanup_sdl();
 
     pthread_mutex_destroy(&mutex_deposito);
@@ -142,5 +232,6 @@ int main() {
     pthread_mutex_destroy(&mutex_render);
     pthread_cond_destroy(&cond_recarga);
 
+    printf("Jogo finalizado!\n");
     return 0;
 }
