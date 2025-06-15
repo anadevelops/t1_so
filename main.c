@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <string.h>
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -49,6 +50,7 @@ pthread_cond_t cond_recarga = PTHREAD_COND_INITIALIZER;
 // Flags e estruturas de controle
 bool jogo_ativo = true;
 char tecla_pressionada = 0;
+char motivo_derrota[128];
 
 // Função para inicializar SDL e SDL_image
 bool init_sdl() {
@@ -115,6 +117,11 @@ void* thread_helicoptero(void* arg) {
         pthread_mutex_lock(&mutex_render);
         mover_helicoptero(&helicoptero, tecla_pressionada);
         tecla_pressionada = 0;
+        // Verificar colisão com as bordas da tela
+        if (helicopero_fora_da_tela(&helicoptero, LARGURA, ALTURA)) {
+            printf("O helicóptero saiu da tela! DERROTA!\n");
+            jogo_ativo = false;
+        }
         pthread_mutex_unlock(&mutex_render);
         usleep(50000);
     }
@@ -148,19 +155,17 @@ void* thread_render(void* arg) {
 void* thread_recarregador(void* arg) {
     while (jogo_ativo) {
         pthread_mutex_lock(&mutex_render);
-        
         // Atualizar recarregador
         atualizar_recarregador(&recarregador);
-        
         // Detectar colisão com helicóptero
         if (helicoptero.pos.x < recarregador.pos.x + REC_W &&
             helicoptero.pos.x + HELI_W > recarregador.pos.x &&
             helicoptero.pos.y < recarregador.pos.y + REC_H &&
             helicoptero.pos.y + HELI_H > recarregador.pos.y) {
-            
-            printf("Helicóptero colidiu com o recarregador!\n");
+            strcpy(motivo_derrota, "O helicóptero colidiu com o recarregador!");
+            printf("%s\n", motivo_derrota);
+            jogo_ativo = false;
         }
-        
         // Verificar colisões com baterias
         for (int i = 0; i < NUM_BATERIAS; i++) {
             if (baterias[i].ativa && !baterias[i].conectada) {
@@ -169,9 +174,17 @@ void* thread_recarregador(void* arg) {
                         conectar_bateria(&recarregador, &baterias[i]);
                     }
                 }
+                // Colisão helicóptero-bateria
+                if (helicoptero.pos.x < baterias[i].pos.x + BAT_W &&
+                    helicoptero.pos.x + HELI_W > baterias[i].pos.x &&
+                    helicoptero.pos.y < baterias[i].pos.y + BAT_H &&
+                    helicoptero.pos.y + HELI_H > baterias[i].pos.y) {
+                    strcpy(motivo_derrota, "O helicóptero colidiu com uma bateria!");
+                    printf("%s\n", motivo_derrota);
+                    jogo_ativo = false;
+                }
             }
         }
-        
         pthread_mutex_unlock(&mutex_render);
         usleep(100000); // Verificar colisão a cada 100ms
     }

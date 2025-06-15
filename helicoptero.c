@@ -31,16 +31,25 @@ void desenhar_helicoptero(SDL_Renderer* renderer, Helicoptero* heli) {
 void mover_helicoptero(Helicoptero* heli, char direcao) {
     switch (direcao) {
         case 'w':
-            if (heli->pos.y > 0) heli->pos.y -= 5;
+            heli->pos.y -= 5;
             break;
         case 's':
-            if (heli->pos.y < 600 - HELI_H) heli->pos.y += 5;
+            heli->pos.y += 5;
             break;
         case 'a':
-            if (heli->pos.x > 0) heli->pos.x -= 5;
+            heli->pos.x -= 5;
             break;
         case 'd':
-            if (heli->pos.x < 800 - HELI_W) heli->pos.x += 5;
+            heli->pos.x += 5;
             break;
     }
+}
+
+bool helicopero_fora_da_tela(Helicoptero* heli, int largura_tela, int altura_tela) {
+    return (
+        heli->pos.x < 0 ||
+        heli->pos.x + HELI_W > largura_tela ||
+        heli->pos.y < 0 ||
+        heli->pos.y + HELI_H > altura_tela
+    );
 } 
