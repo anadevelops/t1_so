@@ -7,9 +7,6 @@
 #include "tipos.h"
 #include "bateria.h"
 
-#define REC_W 80
-#define REC_H 50
-
 // Estrutura do recarregador
 typedef struct {
     Posicao pos;
@@ -18,7 +15,7 @@ typedef struct {
     NivelDificuldade nivel;
     int tempo_recarga;  // Tempo em milissegundos
     int tempo_atual;    // Contador atual
-    Bateria* bateria_conectada;  // Bateria sendo recarregada
+    void* bateria_conectada;  // Ponteiro para a bateria que está recarregando
     SDL_Texture* texture;
 } Recarregador;
 
@@ -28,7 +25,7 @@ void liberar_recarregador(Recarregador* rec);
 void desenhar_recarregador(SDL_Renderer* renderer, Recarregador* rec);
 void inicializar_recarregador(Recarregador* rec, NivelDificuldade nivel);
 void atualizar_recarregador(Recarregador* rec);
-bool conectar_bateria(Recarregador* rec, Bateria* bat);
+void conectar_bateria(Recarregador* rec, void* bateria);
 void desconectar_bateria(Recarregador* rec);
 
 #endif // RECARREGADOR_H 

@@ -3,35 +3,28 @@
 
 #include <stdbool.h>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include "tipos.h"
+#include "tipos.h"  // Já inclui BAT_W, BAT_H e NivelDificuldade
 
-#define BAT_W 40
-#define BAT_H 30
-#define MAX_FOGUETES 10
-
-// Níveis de dificuldade
-typedef enum {
-    FACIL = 0,
-    MEDIO = 1,
-    DIFICIL = 2
-} NivelDificuldade;
-
-// Estrutura da bateria
+// Estrutura da Bateria
 typedef struct {
+    int id;
     Posicao pos;
     bool ativa;
-    bool conectada;  // Se está conectada ao recarregador
     int foguetes_atual;
     int foguetes_max;
+    NivelDificuldade nivel;
+    bool conectada;  // Se está conectada ao recarregador
+    bool na_ponte;   // Se está atravessando a ponte
     SDL_Texture* texture;
 } Bateria;
 
-// Funções da bateria
+// Funções da Bateria
 bool carregar_bateria(SDL_Renderer* renderer, Bateria* bat, const char* caminho_img);
 void liberar_bateria(Bateria* bat);
-void desenhar_bateria(SDL_Renderer* renderer, Bateria* bat);
 void inicializar_bateria(Bateria* bat, NivelDificuldade nivel);
-bool detectar_colisao_bateria_recarregador(Bateria* bat, Posicao pos_rec, int rec_w, int rec_h);
+void desenhar_bateria(SDL_Renderer* renderer, Bateria* bat);
+void* thread_bateria(void* arg);
+
+bool detectar_colisao_bateria_recarregador(Bateria* bat, Posicao rec_pos, int rec_w, int rec_h);
 
 #endif // BATERIA_H 

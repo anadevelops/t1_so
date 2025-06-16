@@ -118,14 +118,14 @@ bool init_sdl() {
     carregar_helicoptero(renderer, &helicoptero, "helicoptero.png");
     
     // Carregar recarregador (sem imagem, será um retângulo vermelho)
-    carregar_recarregador(renderer, &recarregador, NULL);
+    carregar_recarregador(renderer, &recarregador, "recarregador.png");
     inicializar_recarregador(&recarregador, MEDIO);  // Nível médio
     
     // Inicializar baterias
     for (int i = 0; i < NUM_BATERIAS; i++) {
         baterias[i].pos.x = 200 + i * 150;  // Posições espalhadas
         baterias[i].pos.y = 520;
-        carregar_bateria(renderer, &baterias[i], NULL);
+        carregar_bateria(renderer, &baterias[i], "bateria.png");
         inicializar_bateria(&baterias[i], (NivelDificuldade)(i % 3));  // Cada bateria com nível diferente
     }
     
