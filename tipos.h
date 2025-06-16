@@ -11,6 +11,10 @@
 #define BAT_W 40
 #define BAT_H 50
 
+#define FOGUETE_W 8
+#define FOGUETE_H 16
+#define FOGUETE_VELOCIDADE 3
+
 // Enumeração para níveis de dificuldade
 typedef enum {
     FACIL,
@@ -23,5 +27,13 @@ typedef struct {
     int x;
     int y;
 } Posicao;
+
+// Estrutura do foguete
+typedef struct {
+    Posicao pos;
+    bool ativo;
+    int direcao; // 1 para cima, -1 para baixo
+    int velocidade;
+} Foguete;
 
 #endif // TIPOS_H 

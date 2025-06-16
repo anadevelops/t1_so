@@ -54,6 +54,12 @@ Um helicóptero, guiado pelo jogador, deve resgatar soldados enquanto desvia de 
   brew install sdl2_ttf
   ```
 
+  No Windows, via MSYS1 MINGW64:
+
+  ```bash
+  pacman -S mingw-w64-x86_64-SDL2_ttf
+  ```
+
 ## Compilação
 
 No terminal, dentro da pasta do projeto, execute:
@@ -70,10 +76,10 @@ Linux (não sei se funciona porque não consegui testar):
 gcc main.c helicoptero.c bateria.c recarregador.c -o jogo -pthread $(sdl2-config --cflags --libs) -lSDL2_image
 ```
 
-Windows (não sei se funciona porque não consegui testar):
+Windows:
 
 ```bash
-gcc main.c -o jogo.exe -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -mwindows -pthread
+cc main.c helicoptero.c bateria.c recarregador.c -o jogo.exe -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf -mwindows -pthread
 ```
 
 > Se estiver em outro sistema, ajuste os caminhos de acordo com a instalação da SDL2.

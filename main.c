@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <string.h>
+#include <time.h>
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -19,6 +20,7 @@
 #define SOLDIERS 10
 #define NUM_BATERIAS 2
 #define SOLDADOS_PARA_VITORIA 10
+#define MAX_FOGUETES 20  // Máximo de foguetes por bateria
 
 // Variáveis globais do jogo
 SDL_Window* window = NULL;
@@ -55,6 +57,11 @@ bool jogo_ativo = true;
 char tecla_pressionada = 0;
 char motivo_derrota[128] = "";
 int soldados_resgatados = 0;
+
+// Declarações de funções
+void* thread_bateria(void* arg);
+void desenhar_foguetes(SDL_Renderer* renderer, Bateria* bat);
+bool verificar_colisao_foguete_helicoptero(Foguete* foguete, Posicao heli_pos, int heli_w, int heli_h);
 
 // Função para desenhar texto na tela
 void desenhar_texto(SDL_Renderer* rend, TTF_Font* font, const char* texto, SDL_Color color, int x, int y) {
@@ -185,6 +192,8 @@ void* thread_render(void* arg) {
         // Desenhar baterias
         for (int i = 0; i < NUM_BATERIAS; i++) {
             desenhar_bateria(renderer, &baterias[i]);
+            // Desenhar foguetes da bateria
+            desenhar_foguetes(renderer, &baterias[i]);
         }
 
         // (HUD) Exibir contador de soldados resgatados na tela
@@ -231,6 +240,18 @@ void* thread_recarregador(void* arg) {
                     printf("%s\n", motivo_derrota);
                     jogo_ativo = false;
                 }
+                
+                // Verificar colisões entre foguetes e helicóptero
+                for (int j = 0; j < MAX_FOGUETES; j++) {
+                    if (baterias[i].foguetes[j].ativo) {
+                        if (verificar_colisao_foguete_helicoptero(&baterias[i].foguetes[j], helicoptero.pos, HELI_W, HELI_H)) {
+                            strcpy(motivo_derrota, "O helicóptero foi atingido por um foguete!");
+                            printf("%s\n", motivo_derrota);
+                            jogo_ativo = false;
+                            break;
+                        }
+                    }
+                }
             }
         }
         pthread_mutex_unlock(&mutex_render);
@@ -251,6 +272,9 @@ void* simula_soldados(void* arg) {
 int main() {
     printf("Iniciando o jogo...\n");
     
+    // Inicializar gerador de números aleatórios
+    srand(time(NULL));
+    
     if (!init_sdl()) {
         printf("Falha na inicialização do SDL!\n");
         return 1;
@@ -259,6 +283,7 @@ int main() {
     printf("SDL inicializado com sucesso!\n");
 
     pthread_t t_heli, t_render, t_rec, t_simula;
+    pthread_t t_baterias[NUM_BATERIAS]; // Threads para as baterias
 
     // Criar threads
     printf("Criando threads...\n");
@@ -266,6 +291,12 @@ int main() {
     pthread_create(&t_render, NULL, thread_render, NULL);
     pthread_create(&t_rec, NULL, thread_recarregador, NULL);
     pthread_create(&t_simula, NULL, simula_soldados, NULL);
+    
+    // Criar threads para as baterias
+    for (int i = 0; i < NUM_BATERIAS; i++) {
+        pthread_create(&t_baterias[i], NULL, thread_bateria, &baterias[i]);
+    }
+    
     printf("Threads criadas!\n");
 
     // Loop principal (na thread principal)
@@ -301,6 +332,11 @@ int main() {
     pthread_join(t_render, NULL);
     pthread_join(t_rec, NULL);
     pthread_join(t_simula, NULL);
+    
+    // Aguardar threads das baterias terminarem
+    for (int i = 0; i < NUM_BATERIAS; i++) {
+        pthread_join(t_baterias[i], NULL);
+    }
 
     printf("Limpando recursos...\n");
     cleanup_sdl();
