@@ -8,6 +8,7 @@ Um helicóptero, guiado pelo jogador, deve resgatar soldados enquanto desvia de 
 
 ## Requisitos
 
+- **macOS** (mas pode ser adaptado para Linux/Windows)
 - **SDL2** instalada  
   No macOS, instale via Homebrew:
 
@@ -46,6 +47,13 @@ Um helicóptero, guiado pelo jogador, deve resgatar soldados enquanto desvia de 
   pacman -S mingw-w64-x86_64-SDL2_image
   ```
 
+- **SDL2_ttf** instalada (para renderizar texto na tela)  
+  No macOS, instale via Homebrew:
+
+  ```bash
+  brew install sdl2_ttf
+  ```
+
 ## Compilação
 
 No terminal, dentro da pasta do projeto, execute:
@@ -53,7 +61,7 @@ No terminal, dentro da pasta do projeto, execute:
 macOS:
 
 ```bash
-gcc main.c helicoptero.c bateria.c recarregador.c -o jogo -pthread -I/opt/homebrew/include -L/opt/homebrew/lib -lSDL2 -lSDL2_image
+gcc main.c helicoptero.c bateria.c recarregador.c -o jogo -pthread -I/opt/homebrew/include -L/opt/homebrew/lib -lSDL2 -lSDL2_image -lSDL2_ttf
 ```
 
 Linux (não sei se funciona porque não consegui testar):
@@ -89,6 +97,12 @@ No terminal, execute:
 ## Estrutura do Projeto
 
 - `main.c`: Código-fonte principal do jogo
+- `helicoptero.c/.h`: Módulo do Helicóptero
+- `bateria.c/.h`: Módulo das Baterias Antiaéreas
+- `recarregador.c/.h`: Módulo do Recarregador
+- `tipos.h`: Definições de tipos comuns (e.g., `Posicao`, `NivelDificuldade`)
+- `helicoptero.png`: Imagem do sprite do helicóptero
+- `DejaVuSans.ttf` (ou similar): Arquivo de fonte para renderização de texto na tela
 - `definicao_das_threads.md`: Documento de definição das threads e estratégias de sincronização
 - `README.md`: Este arquivo
 
