@@ -30,6 +30,7 @@
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 TTF_Font* fonte_padrao = NULL;
+SDL_Texture* foguete_texture = NULL;
 Helicoptero helicoptero = {
     .pos = {.x = 50, .y = ALTURA/2},
     .ativo = true,
@@ -117,6 +118,11 @@ bool init_sdl() {
         return false;
     }
 
+      foguete_texture = IMG_LoadTexture(renderer, "foguete.png");
+    if (!foguete_texture) {
+        printf("Erro ao carregar foguete.png: %s\n", IMG_GetError());
+    }
+
     // Carregar fonte
     fonte_padrao = TTF_OpenFont("Arial.ttf", 24); // Tente usar uma fonte comum
     if (!fonte_padrao) {
@@ -166,6 +172,7 @@ void cleanup_sdl() {
     
     if (fonte_padrao) TTF_CloseFont(fonte_padrao);
     if (renderer) SDL_DestroyRenderer(renderer);
+    if (foguete_texture) SDL_DestroyTexture(foguete_texture);
     if (window) SDL_DestroyWindow(window);
     IMG_Quit();
     TTF_Quit();

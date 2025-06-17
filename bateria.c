@@ -6,6 +6,8 @@
 #include <unistd.h> // Para usleep
 #include <time.h> // Para rand()
 #include <pthread.h> // Para pthread_mutex_t
+#include <SDL2/SDL.h>
+  extern SDL_Texture* foguete_texture;
 
 bool carregar_bateria(SDL_Renderer* renderer, Bateria* bat, const char* caminho_img) {
     if (caminho_img) {
@@ -265,17 +267,20 @@ void mover_foguetes(Bateria* bat, int altura_tela) {
 }
 
 void desenhar_foguetes(SDL_Renderer* renderer, Bateria* bat) {
-    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // Amarelo para foguetes
-    
     for (int i = 0; i < MAX_FOGUETES; i++) {
         if (bat->foguetes[i].ativo) {
-            SDL_Rect foguete_rect = {
+            SDL_Rect dst = {
                 bat->foguetes[i].pos.x,
                 bat->foguetes[i].pos.y,
                 FOGUETE_W,
                 FOGUETE_H
             };
-            SDL_RenderFillRect(renderer, &foguete_rect);
+            if (foguete_texture) {
+                SDL_RenderCopy(renderer, foguete_texture, NULL, &dst);
+            } else {
+                SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+                SDL_RenderFillRect(renderer, &dst);
+            }
         }
     }
 }
