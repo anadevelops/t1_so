@@ -17,9 +17,14 @@ typedef struct {
     NivelDificuldade nivel;
     bool conectada;  // Se está conectada ao recarregador
     bool na_ponte;   // Se está atravessando a ponte
+    bool recarregando;  // Se está sendo recarregada
+    int tempo_recarga_atual;  // Tempo atual de recarga
+    int tempo_recarga_total;  // Tempo total necessário para recarga
+    bool voltando_para_area_original;  // Se está voltando para sua área original
     SDL_Texture* texture;
     int velocidade;  // Velocidade de movimento
     int direcao;     // 1 para direita, -1 para esquerda
+    int tempo_disparo_personalizado;  // Tempo de disparo personalizado para cada bateria
     Foguete foguetes[MAX_FOGUETES];  // Array de foguetes
     int tempo_ultimo_disparo;  // Controle de frequência de disparo
 } Bateria;

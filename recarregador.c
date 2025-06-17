@@ -38,7 +38,6 @@ void desenhar_recarregador(SDL_Renderer* renderer, Recarregador* rec) {
 }
 
 void inicializar_recarregador(Recarregador* rec, NivelDificuldade nivel) {
-    rec->nivel = nivel;
     rec->ocupado = false;
     rec->bateria_conectada = NULL;
     // Definir tempo de recarga baseado no nível

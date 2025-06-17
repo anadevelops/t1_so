@@ -12,7 +12,6 @@ typedef struct {
     Posicao pos;
     bool ativo;
     bool ocupado;  // Se está recarregando uma bateria
-    NivelDificuldade nivel;
     int tempo_recarga;  // Tempo em milissegundos
     int tempo_atual;    // Contador atual
     void* bateria_conectada;  // Ponteiro para a bateria que está recarregando

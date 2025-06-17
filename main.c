@@ -22,6 +22,10 @@
 #define SOLDADOS_PARA_VITORIA 10
 #define MAX_FOGUETES 20  // Máximo de foguetes por bateria
 
+// Constantes da ponte
+#define PONTE_LARGURA 150  // Aumentada de 100 para 150 (50% mais larga)
+#define PONTE_X (100 + REC_W + 20)  // Posicionada logo à direita do recarregador
+
 // Variáveis globais do jogo
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
@@ -33,10 +37,9 @@ Helicoptero helicoptero = {
 };
 
 Recarregador recarregador = {
-    .pos = {.x = 100, .y = 500},  // Posição fixa
+    .pos = {.x = 100, .y = ALTURA - 40 - REC_H},  // Posição fixa em cima do chão
     .ativo = true,
     .ocupado = false,
-    .nivel = MEDIO,  // Nível médio por padrão
     .tempo_recarga = 3000,
     .tempo_atual = 0,
     .bateria_conectada = NULL,
@@ -57,11 +60,14 @@ bool jogo_ativo = true;
 char tecla_pressionada = 0;
 char motivo_derrota[128] = "";
 int soldados_resgatados = 0;
+NivelDificuldade nivel_dificuldade_global = FACIL;  // Nível de dificuldade global do jogo
+int bateria_atravessando_ponte = -1;  // ID da bateria atravessando a ponte (-1 = nenhuma)
 
 // Declarações de funções
 void* thread_bateria(void* arg);
 void desenhar_foguetes(SDL_Renderer* renderer, Bateria* bat);
 bool verificar_colisao_foguete_helicoptero(Foguete* foguete, Posicao heli_pos, int heli_w, int heli_h);
+void alterar_nivel_dificuldade(NivelDificuldade novo_nivel);
 
 // Função para desenhar texto na tela
 void desenhar_texto(SDL_Renderer* rend, TTF_Font* font, const char* texto, SDL_Color color, int x, int y) {
@@ -126,14 +132,23 @@ bool init_sdl() {
     
     // Carregar recarregador (sem imagem, será um retângulo vermelho)
     carregar_recarregador(renderer, &recarregador, "recarregador.png");
-    inicializar_recarregador(&recarregador, MEDIO);  // Nível médio
+    inicializar_recarregador(&recarregador, nivel_dificuldade_global);  // Usar nível global
     
     // Inicializar baterias
     for (int i = 0; i < NUM_BATERIAS; i++) {
-        baterias[i].pos.x = 200 + i * 150;  // Posições espalhadas
-        baterias[i].pos.y = 520;
+        if (i == 0) {
+            // Primeira bateria: exatamente à esquerda do limite direito de movimento
+            baterias[i].pos.x = 600 - BAT_W - 20;  // 20 pixels antes do limite direito
+            baterias[i].direcao = 1;  // Andando para direita
+        } else {
+            // Segunda bateria: exatamente à direita da ponte
+            baterias[i].pos.x = 320;  // Exatamente no fim da ponte (lado direito)
+            baterias[i].direcao = -1;  // Andando para esquerda
+        }
+        baterias[i].pos.y = ALTURA - 40 - BAT_H;  // Posicionadas em cima do chão
+        baterias[i].id = i;  // Definir ID da bateria
         carregar_bateria(renderer, &baterias[i], "bateria.png");
-        inicializar_bateria(&baterias[i], (NivelDificuldade)(i % 3));  // Cada bateria com nível diferente
+        inicializar_bateria(&baterias[i], nivel_dificuldade_global);  // Usar nível global
     }
     
     return true;
@@ -185,6 +200,23 @@ void* thread_render(void* arg) {
         // Limpar tela
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
+        
+        // Desenhar chão (duas seções cinzas separadas pela ponte)
+        SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255); // Cor cinza
+        
+        // Seção esquerda do chão
+        SDL_Rect chao_esquerdo = {0, ALTURA - 40, PONTE_X, 40};
+        SDL_RenderFillRect(renderer, &chao_esquerdo);
+        
+        // Seção direita do chão
+        SDL_Rect chao_direito = {PONTE_X + PONTE_LARGURA, ALTURA - 40, LARGURA - (PONTE_X + PONTE_LARGURA), 40};
+        SDL_RenderFillRect(renderer, &chao_direito);
+        
+        // Desenhar ponte marrom como divisão vertical no chão
+        SDL_SetRenderDrawColor(renderer, 139, 69, 19, 255); // Cor marrom
+        SDL_Rect ponte = {PONTE_X, ALTURA - 40, PONTE_LARGURA, 15}; // Altura reduzida, topo mantido
+        SDL_RenderFillRect(renderer, &ponte);
+        
         // Desenhar helicóptero
         desenhar_helicoptero(renderer, &helicoptero);
         // Desenhar recarregador fixo
@@ -199,6 +231,12 @@ void* thread_render(void* arg) {
         // (HUD) Exibir contador de soldados resgatados na tela
         sprintf(texto_soldados, "Soldados: %d/%d", soldados_resgatados, SOLDADOS_PARA_VITORIA);
         desenhar_texto(renderer, fonte_padrao, texto_soldados, cor_branca, 10, 10);
+        
+        // Exibir nível de dificuldade atual
+        char texto_nivel[50];
+        const char* nomes_nivel[] = {"FACIL", "MEDIO", "DIFICIL"};
+        sprintf(texto_nivel, "Nivel: %s", nomes_nivel[nivel_dificuldade_global]);
+        desenhar_texto(renderer, fonte_padrao, texto_nivel, cor_branca, 10, 40);
 
         // Atualizar tela
         SDL_RenderPresent(renderer);
@@ -269,6 +307,21 @@ void* simula_soldados(void* arg) {
     return NULL;
 }
 
+// Função para alterar o nível de dificuldade global
+void alterar_nivel_dificuldade(NivelDificuldade novo_nivel) {
+    nivel_dificuldade_global = novo_nivel;
+    
+    // Atualizar recarregador
+    inicializar_recarregador(&recarregador, novo_nivel);
+    
+    // Atualizar todas as baterias
+    for (int i = 0; i < NUM_BATERIAS; i++) {
+        inicializar_bateria(&baterias[i], novo_nivel);
+    }
+    
+    printf("Nível de dificuldade alterado para: %d\n", novo_nivel);
+}
+
 int main() {
     printf("Iniciando o jogo...\n");
     
@@ -314,6 +367,9 @@ int main() {
                     case SDLK_a: tecla_pressionada = 'a'; break;
                     case SDLK_d: tecla_pressionada = 'd'; break;
                     case SDLK_q: jogo_ativo = false; break;
+                    case SDLK_1: alterar_nivel_dificuldade(FACIL); break;   // Tecla 1 para nível fácil
+                    case SDLK_2: alterar_nivel_dificuldade(MEDIO); break;   // Tecla 2 para nível médio
+                    case SDLK_3: alterar_nivel_dificuldade(DIFICIL); break; // Tecla 3 para nível difícil
                 }
             }
         }

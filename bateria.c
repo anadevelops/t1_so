@@ -38,11 +38,30 @@ void inicializar_bateria(Bateria* bat, NivelDificuldade nivel) {
     bat->ativa = true;
     bat->conectada = false;
     bat->na_ponte = false;
+    bat->recarregando = false;
+    bat->voltando_para_area_original = false;
+    bat->tempo_recarga_atual = 0;
     bat->nivel = nivel;
     
-    // Inicializar movimento aleatório
-    bat->velocidade = 1 + (rand() % 3); // Velocidade entre 1 e 3
-    bat->direcao = (rand() % 2) ? 1 : -1; // Direção aleatória (1 ou -1)
+    // Definir tempo de recarga baseado no nível (em frames, considerando 60 FPS)
+    switch (nivel) {
+        case FACIL: bat->tempo_recarga_total = 30; break;   // 0.5s (30 frames a 60 FPS)
+        case MEDIO: bat->tempo_recarga_total = 18; break;   // 0.3s (18 frames a 60 FPS)
+        case DIFICIL: bat->tempo_recarga_total = 6; break;  // 0.1s (6 frames a 60 FPS)
+    }
+    
+    // Inicializar movimento com velocidade aleatória (±20% da velocidade base)
+    float velocidade_base = 3.0f;  // Aumentada de 2.0 para 3.0 (50% mais rápida)
+    float variacao = 0.2f; // 20% de variação
+    float fator_aleatorio = 0.8f + (rand() % 41) / 100.0f; // Entre 0.8 e 1.2
+    bat->velocidade = (int)(velocidade_base * fator_aleatorio);
+    if (bat->velocidade < 1) bat->velocidade = 1; // Velocidade mínima de 1
+    
+    // Inicializar tempo de disparo personalizado (±20% do tempo base)
+    int tempo_disparo_base = 30; // Tempo base de disparo
+    float fator_disparo = 0.8f + (rand() % 41) / 100.0f; // Entre 0.8 e 1.2
+    bat->tempo_disparo_personalizado = (int)(tempo_disparo_base * fator_disparo);
+    if (bat->tempo_disparo_personalizado < 20) bat->tempo_disparo_personalizado = 20; // Mínimo de 20
     
     // Inicializar foguetes
     for (int i = 0; i < MAX_FOGUETES; i++) {
@@ -77,31 +96,141 @@ void desenhar_bateria(SDL_Renderer* renderer, Bateria* bat) {
 }
 
 void mover_bateria(Bateria* bat, int largura_tela) {
-    if (!bat->ativa || bat->conectada || bat->na_ponte) {
-        return; // Não move se não estiver ativa ou estiver conectada/na ponte
+    if (!bat->ativa || bat->conectada) {
+        return; // Não move se não estiver ativa ou estiver conectada
+    }
+    
+    // Verificar se a bateria está sendo recarregada
+    if (bat->recarregando) {
+        bat->tempo_recarga_atual++;
+        if (bat->tempo_recarga_atual >= bat->tempo_recarga_total) {
+            // Recarga completa
+            bat->recarregando = false;
+            bat->foguetes_atual = bat->foguetes_max; // Recarregar munição
+            bat->voltando_para_area_original = true; // Começar a voltar
+            bat->tempo_recarga_atual = 0;
+            printf("Bateria %d recarga completa! Voltando para área original\n", bat->id);
+        }
+        return; // Não move durante a recarga
+    }
+    
+    // Verificar se a bateria está voltando para sua área original
+    if (bat->voltando_para_area_original) {
+        // Ir para o lado direito da ponte (área original)
+        int ponte_fim = 320;
+        if (bat->pos.x < ponte_fim) {
+            bat->direcao = 1; // Ir para direita
+            printf("Bateria %d voltando: indo para direita, pos=%d\n", bat->id, bat->pos.x);
+        } else {
+            // Chegou na área original
+            bat->voltando_para_area_original = false;
+            // Restaurar direção original baseada no ID
+            bat->direcao = (bat->id == 0) ? 1 : -1;
+            bat->tempo_ultimo_disparo = 0; // Resetar timer de disparo
+            printf("Bateria %d chegou na área original! Direção restaurada: %d\n", bat->id, bat->direcao);
+        }
+    }
+    // Verificar se a bateria está sem munição e precisa ir para o recarregador
+    else if (bat->foguetes_atual <= 0 && !bat->na_ponte && !bat->voltando_para_area_original) {
+        // Bateria sem munição - deve ir para o recarregador
+        int recarregador_x = 100; // Posição X do recarregador
+        
+        // Debug: imprimir quando bateria fica sem munição
+        static bool debug_sem_municao = false;
+        if (!debug_sem_municao) {
+            printf("Bateria %d ficou sem munição! Indo para recarregador em X=%d\n", bat->id, recarregador_x);
+            debug_sem_municao = true;
+        }
+        
+        if (bat->pos.x > recarregador_x) {
+            // Recarregador está à esquerda, bateria deve ir para esquerda
+            bat->direcao = -1;
+        } else {
+            // Recarregador está à direita, bateria deve ir para direita
+            bat->direcao = 1;
+        }
+        
+        // Verificar se chegou ao recarregador (considerando a largura da bateria)
+        if (bat->pos.x <= recarregador_x + 50 && bat->pos.x + BAT_W >= recarregador_x) {
+            bat->recarregando = true;
+            bat->tempo_recarga_atual = 0;
+            printf("Bateria %d chegou ao recarregador! Pos: %d, Rec: %d\n", bat->id, bat->pos.x, recarregador_x);
+            debug_sem_municao = false; // Reset para próxima vez
+            return; // Parar de mover
+        }
     }
     
     // Mover a bateria
     bat->pos.x += bat->velocidade * bat->direcao;
     
-    // Verificar se bateu nas bordas da tela
-    if (bat->pos.x <= 0) {
-        bat->pos.x = 0;
-        bat->direcao = 1; // Muda para direita
-    } else if (bat->pos.x + BAT_W >= largura_tela) {
-        bat->pos.x = largura_tela - BAT_W;
-        bat->direcao = -1; // Muda para esquerda
+    // Verificar se bateu nos limites da área central (400 pixels centrais)
+    int limite_esquerdo = 200;  // Início da área central
+    int limite_direito = 600 - BAT_W;  // Fim da área central (considerando largura da bateria)
+    
+    // Verificar se bateu na ponte (lado direito da ponte)
+    int ponte_inicio = 170;  // Posição X da ponte
+    int ponte_fim = 320;     // Fim da ponte (ponte_inicio + PONTE_LARGURA)
+    
+    // Declaração externa da variável global
+    extern int bateria_atravessando_ponte;
+    
+    // Verificar limites apenas se a bateria tem munição ou está voltando
+    if (bat->foguetes_atual > 0 || bat->voltando_para_area_original) {
+        if (bat->pos.x <= limite_esquerdo) {
+            bat->pos.x = limite_esquerdo;
+            if (bat->foguetes_atual > 0 && !bat->voltando_para_area_original) {
+                bat->direcao = 1; // Muda para direita apenas se tiver munição e não estiver voltando
+            }
+            // Se não tem munição e não está voltando, pode continuar para esquerda (para o recarregador)
+        } else if (bat->pos.x >= limite_direito) {
+            bat->pos.x = limite_direito;
+            if (bat->foguetes_atual > 0 && !bat->voltando_para_area_original) {
+                bat->direcao = -1; // Muda para esquerda apenas se tiver munição e não estiver voltando
+            }
+        }
     }
     
-    // Ocasionalmente mudar direção aleatoriamente (10% de chance)
-    if (rand() % 100 < 10) {
-        bat->direcao *= -1;
+    if (bat->pos.x + BAT_W >= ponte_inicio && bat->pos.x < ponte_fim) {
+        // Bateria está tentando atravessar a ponte
+        if (bat->foguetes_atual > 0 && !bat->voltando_para_area_original) {
+            // Bateria com munição - não pode atravessar (exceto se estiver voltando)
+            if (bat->direcao == 1) {
+                bat->pos.x = ponte_inicio - BAT_W;
+            } else {
+                bat->pos.x = ponte_fim;
+            }
+            bat->direcao *= -1;
+        } else {
+            // Bateria sem munição ou voltando - pode atravessar se nenhuma outra estiver atravessando
+            if (bateria_atravessando_ponte == -1 || bateria_atravessando_ponte == bat->id) {
+                // Nenhuma bateria atravessando ou esta já está atravessando
+                if (bateria_atravessando_ponte == -1) {
+                    bateria_atravessando_ponte = bat->id;
+                }
+                bat->na_ponte = true;
+                printf("Bateria %d atravessando a ponte\n", bat->id);
+            } else {
+                // Outra bateria está atravessando, esta deve esperar
+                if (bat->direcao == 1) {
+                    bat->pos.x = ponte_inicio - BAT_W;
+                } else {
+                    bat->pos.x = ponte_fim;
+                }
+            }
+        }
+    } else if (bat->na_ponte && (bat->pos.x < ponte_inicio || bat->pos.x >= ponte_fim)) {
+        // Bateria saiu da ponte
+        bat->na_ponte = false;
+        if (bateria_atravessando_ponte == bat->id) {
+            bateria_atravessando_ponte = -1;
+            printf("Bateria %d saiu da ponte\n", bat->id);
+        }
     }
 }
 
 void disparar_foguete(Bateria* bat) {
-    if (!bat->ativa || bat->conectada || bat->na_ponte || bat->foguetes_atual <= 0) {
-        return; // Não dispara se não estiver ativa, conectada, ou sem foguetes
+    if (!bat->ativa || bat->conectada || bat->na_ponte || bat->recarregando || bat->voltando_para_area_original || bat->foguetes_atual <= 0) {
+        return; // Não dispara se não estiver ativa, conectada, na ponte, recarregando, voltando, ou sem foguetes
     }
     
     // Encontrar um slot livre para o foguete
@@ -179,7 +308,7 @@ void* thread_bateria(void* arg) {
         
         // Tentar disparar foguete (se tiver foguetes e tempo suficiente)
         bat->tempo_ultimo_disparo++;
-        if (bat->foguetes_atual > 0 && bat->tempo_ultimo_disparo > 30) { // Dispara a cada ~1.5 segundos
+        if (bat->foguetes_atual > 0 && bat->tempo_ultimo_disparo > bat->tempo_disparo_personalizado) {
             disparar_foguete(bat);
         }
         
