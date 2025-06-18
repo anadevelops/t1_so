@@ -25,12 +25,17 @@
 // Constantes da ponte
 #define PONTE_LARGURA 150  // Aumentada de 100 para 150 (50% mais larga)
 #define PONTE_X (100 + REC_W + 20)  // Posicionada logo à direita do recarregador
+#define PONTE_ALTURA 36  // Altura proporcional à imagem ponte.png
 
 // Variáveis globais do jogo
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 TTF_Font* fonte_padrao = NULL;
 SDL_Texture* foguete_texture = NULL;
+SDL_Texture* fundo_texture = NULL;
+SDL_Texture* grama_texture = NULL;
+SDL_Texture* grama_esquerda_texture = NULL;
+SDL_Texture* ponte_texture = NULL;
 Helicoptero helicoptero = {
     .pos = {.x = 50, .y = ALTURA/2},
     .ativo = true,
@@ -118,9 +123,28 @@ bool init_sdl() {
         return false;
     }
 
+    fundo_texture = IMG_LoadTexture(renderer, "fundo.png");
+    if (!fundo_texture) {
+        printf("Erro ao carregar fundo.png: %s\n", IMG_GetError());
+    }
+
       foguete_texture = IMG_LoadTexture(renderer, "foguete.png");
     if (!foguete_texture) {
         printf("Erro ao carregar foguete.png: %s\n", IMG_GetError());
+    }
+
+    grama_texture = IMG_LoadTexture(renderer, "grama_direita.png");
+    if (!grama_texture) {
+        printf("Erro ao carregar grama_direita.png: %s\n", IMG_GetError());
+    }
+    grama_esquerda_texture = IMG_LoadTexture(renderer, "grama_esquerda.png");
+    if (!grama_esquerda_texture) {
+        printf("Erro ao carregar grama_esquerda.png: %s\n", IMG_GetError());
+    }
+
+    ponte_texture = IMG_LoadTexture(renderer, "ponte.png");
+    if (!ponte_texture) {
+        printf("Erro ao carregar ponte.png: %s\n", IMG_GetError());
     }
 
     // Carregar fonte
@@ -173,6 +197,10 @@ void cleanup_sdl() {
     if (fonte_padrao) TTF_CloseFont(fonte_padrao);
     if (renderer) SDL_DestroyRenderer(renderer);
     if (foguete_texture) SDL_DestroyTexture(foguete_texture);
+    if (fundo_texture) SDL_DestroyTexture(fundo_texture);
+    if (grama_texture) SDL_DestroyTexture(grama_texture);
+    if (grama_esquerda_texture) SDL_DestroyTexture(grama_esquerda_texture);
+    if (ponte_texture) SDL_DestroyTexture(ponte_texture);
     if (window) SDL_DestroyWindow(window);
     IMG_Quit();
     TTF_Quit();
@@ -208,21 +236,36 @@ void* thread_render(void* arg) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         
+        if (fundo_texture) {
+            SDL_Rect dst = {0, 0, LARGURA, ALTURA};
+            SDL_RenderCopy(renderer, fundo_texture, NULL, &dst);
+        }
+
         // Desenhar chão (duas seções cinzas separadas pela ponte)
         SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255); // Cor cinza
         
         // Seção esquerda do chão
         SDL_Rect chao_esquerdo = {0, ALTURA - 40, PONTE_X, 40};
-        SDL_RenderFillRect(renderer, &chao_esquerdo);
+        SDL_RenderCopy(renderer, grama_esquerda_texture, NULL, &chao_esquerdo);
         
         // Seção direita do chão
-        SDL_Rect chao_direito = {PONTE_X + PONTE_LARGURA, ALTURA - 40, LARGURA - (PONTE_X + PONTE_LARGURA), 40};
-        SDL_RenderFillRect(renderer, &chao_direito);
+        if (grama_texture) {
+            SDL_Rect chao_direito = {PONTE_X + PONTE_LARGURA, ALTURA - 40, LARGURA - (PONTE_X + PONTE_LARGURA), 40};
+            SDL_RenderCopy(renderer, grama_texture, NULL, &chao_direito);
+        } else {
+            SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
+            SDL_Rect chao_direito = {PONTE_X + PONTE_LARGURA, ALTURA - 40, LARGURA - (PONTE_X + PONTE_LARGURA), 40};
+            SDL_RenderFillRect(renderer, &chao_direito);
+        }
         
-        // Desenhar ponte marrom como divisão vertical no chão
-        SDL_SetRenderDrawColor(renderer, 139, 69, 19, 255); // Cor marrom
-        SDL_Rect ponte = {PONTE_X, ALTURA - 40, PONTE_LARGURA, 15}; // Altura reduzida, topo mantido
-        SDL_RenderFillRect(renderer, &ponte);
+        // Desenhar ponte
+        SDL_Rect ponte = {PONTE_X, ALTURA - 40, PONTE_LARGURA, PONTE_ALTURA};
+        if (ponte_texture) {
+            SDL_RenderCopy(renderer, ponte_texture, NULL, &ponte);
+        } else {
+            SDL_SetRenderDrawColor(renderer, 139, 69, 19, 255);
+            SDL_RenderFillRect(renderer, &ponte);
+        }
         
         // Desenhar helicóptero
         desenhar_helicoptero(renderer, &helicoptero);
