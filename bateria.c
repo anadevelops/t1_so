@@ -320,7 +320,7 @@ void* thread_bateria(void* arg) {
         pthread_mutex_unlock(&mutex_render);
         
         // Lógica de disparo, etc.
-        usleep(50000); // 50ms de delay
+        usleep(16000); // 16ms para 60fps
     }
     return NULL;
 }

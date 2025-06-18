@@ -84,7 +84,7 @@ pthread_cond_t cond_recarga = PTHREAD_COND_INITIALIZER;
 
 // Flags e estruturas de controle
 bool jogo_ativo = true;
-char tecla_pressionada = 0;
+TeclasMovimento teclas_mov = {0};
 char motivo_derrota[128] = "";
 int soldados_resgatados = 0;
 NivelDificuldade nivel_dificuldade_global = FACIL;  // Nível de dificuldade global do jogo
@@ -355,8 +355,7 @@ void cleanup_sdl() {
 void* thread_helicoptero(void* arg) {
     while (jogo_ativo) {
         pthread_mutex_lock(&mutex_render);
-        mover_helicoptero(&helicoptero, tecla_pressionada);
-        tecla_pressionada = 0;
+        mover_helicoptero(&helicoptero, &teclas_mov);
         
         // Verificar colisão com soldados
         verificar_colisao_helicoptero_soldados();
@@ -371,7 +370,7 @@ void* thread_helicoptero(void* arg) {
             jogo_ativo = false;
         }
         pthread_mutex_unlock(&mutex_render);
-        usleep(50000);
+        usleep(16000); // 16ms para 60fps
     }
     return NULL;
 }
@@ -459,7 +458,7 @@ void* thread_render(void* arg) {
         // Atualizar tela
         SDL_RenderPresent(renderer);
         pthread_mutex_unlock(&mutex_render);
-        usleep(16666); // ~60 FPS
+        usleep(16000); // 16ms para 60fps
     }
     return NULL;
 }
@@ -511,7 +510,7 @@ void* thread_recarregador(void* arg) {
             }
         }
         pthread_mutex_unlock(&mutex_render);
-        usleep(100000); // Verificar colisão a cada 100ms
+        usleep(16000); // 16ms para 60fps
     }
     return NULL;
 }
@@ -568,23 +567,24 @@ int main() {
             if (event.type == SDL_QUIT) {
                 jogo_ativo = false;
             }
-            else if (event.type == SDL_KEYDOWN) {
+            else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
+                bool pressed = (event.type == SDL_KEYDOWN);
                 switch (event.key.keysym.sym) {
-                    case SDLK_w: tecla_pressionada = 'w'; break;
-                    case SDLK_s: tecla_pressionada = 's'; break;
-                    case SDLK_a: tecla_pressionada = 'a'; break;
-                    case SDLK_d: tecla_pressionada = 'd'; break;
+                    case SDLK_w: teclas_mov.w = pressed; break;
+                    case SDLK_s: teclas_mov.s = pressed; break;
+                    case SDLK_a: teclas_mov.a = pressed; break;
+                    case SDLK_d: teclas_mov.d = pressed; break;
                     case SDLK_e: 
-                        if (helicoptero_carregando_soldado) {
+                        if (pressed && helicoptero_carregando_soldado) {
                             pthread_mutex_lock(&mutex_render);
                             soltar_soldado();
                             pthread_mutex_unlock(&mutex_render);
                         }
                         break;
-                    case SDLK_q: jogo_ativo = false; break;
-                    case SDLK_1: alterar_nivel_dificuldade(FACIL); break;   // Tecla 1 para nível fácil
-                    case SDLK_2: alterar_nivel_dificuldade(MEDIO); break;   // Tecla 2 para nível médio
-                    case SDLK_3: alterar_nivel_dificuldade(DIFICIL); break; // Tecla 3 para nível difícil
+                    case SDLK_q: if (pressed) jogo_ativo = false; break;
+                    case SDLK_1: if (pressed) alterar_nivel_dificuldade(FACIL); break;
+                    case SDLK_2: if (pressed) alterar_nivel_dificuldade(MEDIO); break;
+                    case SDLK_3: if (pressed) alterar_nivel_dificuldade(DIFICIL); break;
                 }
             }
         }

@@ -28,20 +28,22 @@ void desenhar_helicoptero(SDL_Renderer* renderer, Helicoptero* heli) {
     SDL_RenderCopy(renderer, heli->texture, NULL, &heli_rect);
 }
 
-void mover_helicoptero(Helicoptero* heli, char direcao) {
-    switch (direcao) {
-        case 'w':
-            heli->pos.y -= 5;
-            break;
-        case 's':
-            heli->pos.y += 5;
-            break;
-        case 'a':
-            heli->pos.x -= 5;
-            break;
-        case 'd':
-            heli->pos.x += 5;
-            break;
+void mover_helicoptero(Helicoptero* heli, const TeclasMovimento* teclas) {
+    int dx = 0, dy = 0;
+    int velocidade = 5;
+    if (teclas->w) dy -= 1;
+    if (teclas->s) dy += 1;
+    if (teclas->a) dx -= 1;
+    if (teclas->d) dx += 1;
+
+    // Normalização de velocidade
+    if (dx != 0 && dy != 0) {
+        float norm = 0.7071f; // 1/sqrt(2)
+        heli->pos.x += (int)((dx * norm) * velocidade);
+        heli->pos.y += (int)((dy * norm) * velocidade);
+    } else {
+        heli->pos.x += dx * velocidade;
+        heli->pos.y += dy * velocidade;
     }
 }
 

@@ -36,4 +36,12 @@ typedef struct {
     int velocidade;
 } Foguete;
 
+// Estrutura para o estado das teclas de movimento do helicóptero
+typedef struct {
+    bool w;
+    bool a;
+    bool s;
+    bool d;
+} TeclasMovimento;
+
 #endif // TIPOS_H 
