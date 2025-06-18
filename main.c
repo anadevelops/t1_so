@@ -354,22 +354,14 @@ void cleanup_sdl() {
 // Função da Thread do helicóptero
 void* thread_helicoptero(void* arg) {
     while (jogo_ativo) {
-        pthread_mutex_lock(&mutex_render);
         mover_helicoptero(&helicoptero, &teclas_mov);
-        
-        // Verificar colisão com soldados
         verificar_colisao_helicoptero_soldados();
-        
-        // Verificar se deve soltar soldado
         soltar_soldado();
-        
-        // Verificar colisão com as bordas da tela
         if (helicopero_fora_da_tela(&helicoptero, LARGURA, ALTURA)) {
             strcpy(motivo_derrota, "O helicóptero colidiu com a parede!");
             printf("%s\n", motivo_derrota);
             jogo_ativo = false;
         }
-        pthread_mutex_unlock(&mutex_render);
         usleep(16000); // 16ms para 60fps
     }
     return NULL;
@@ -466,8 +458,6 @@ void* thread_render(void* arg) {
 // Função da Thread do recarregador
 void* thread_recarregador(void* arg) {
     while (jogo_ativo) {
-        pthread_mutex_lock(&mutex_render);
-        // Atualizar recarregador
         atualizar_recarregador(&recarregador);
         // Detectar colisão com helicóptero
         if (helicoptero.pos.x < recarregador.pos.x + REC_W &&
@@ -480,36 +470,33 @@ void* thread_recarregador(void* arg) {
         }
         // Verificar colisões com baterias
         for (int i = 0; i < NUM_BATERIAS; i++) {
-            if (baterias[i].ativa && !baterias[i].conectada) {
+            if (baterias[i].ativa && !baterias[i].conectada)
                 if (detectar_colisao_bateria_recarregador(&baterias[i], recarregador.pos, REC_W, REC_H)) {
                     if (!recarregador.ocupado) {
                         conectar_bateria(&recarregador, &baterias[i]);
                     }
                 }
-                // Colisão helicóptero-bateria
-                if (helicoptero.pos.x < baterias[i].pos.x + BAT_W &&
-                    helicoptero.pos.x + HELI_W > baterias[i].pos.x &&
-                    helicoptero.pos.y < baterias[i].pos.y + BAT_H &&
-                    helicoptero.pos.y + HELI_H > baterias[i].pos.y) {
-                    strcpy(motivo_derrota, "O helicóptero colidiu com uma bateria!");
-                    printf("%s\n", motivo_derrota);
-                    jogo_ativo = false;
-                }
-                
-                // Verificar colisões entre foguetes e helicóptero
-                for (int j = 0; j < MAX_FOGUETES; j++) {
-                    if (baterias[i].foguetes[j].ativo) {
-                        if (verificar_colisao_foguete_helicoptero(&baterias[i].foguetes[j], helicoptero.pos, HELI_W, HELI_H)) {
-                            strcpy(motivo_derrota, "O helicóptero foi atingido por um foguete!");
-                            printf("%s\n", motivo_derrota);
-                            jogo_ativo = false;
-                            break;
-                        }
+            // Colisão helicóptero-bateria
+            if (helicoptero.pos.x < baterias[i].pos.x + BAT_W &&
+                helicoptero.pos.x + HELI_W > baterias[i].pos.x &&
+                helicoptero.pos.y < baterias[i].pos.y + BAT_H &&
+                helicoptero.pos.y + HELI_H > baterias[i].pos.y) {
+                strcpy(motivo_derrota, "O helicóptero colidiu com uma bateria!");
+                printf("%s\n", motivo_derrota);
+                jogo_ativo = false;
+            }
+            // Verificar colisões entre foguetes e helicóptero
+            for (int j = 0; j < MAX_FOGUETES; j++) {
+                if (baterias[i].foguetes[j].ativo) {
+                    if (verificar_colisao_foguete_helicoptero(&baterias[i].foguetes[j], helicoptero.pos, HELI_W, HELI_H)) {
+                        strcpy(motivo_derrota, "O helicóptero foi atingido por um foguete!");
+                        printf("%s\n", motivo_derrota);
+                        jogo_ativo = false;
+                        break;
                     }
                 }
             }
         }
-        pthread_mutex_unlock(&mutex_render);
         usleep(16000); // 16ms para 60fps
     }
     return NULL;

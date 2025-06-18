@@ -53,22 +53,22 @@ void inicializar_bateria(Bateria* bat, NivelDificuldade nivel) {
     }
     
     // Inicializar movimento com velocidade aleatória (±20% da velocidade base)
-    float velocidade_base = 3.0f;  // Aumentada de 2.0 para 3.0 (50% mais rápida)
+    float velocidade_base = 2.0f;  // Reduzida pela metade
     float variacao = 0.2f; // 20% de variação
     float fator_aleatorio = 0.8f + (rand() % 41) / 100.0f; // Entre 0.8 e 1.2
     bat->velocidade = (int)(velocidade_base * fator_aleatorio);
     if (bat->velocidade < 1) bat->velocidade = 1; // Velocidade mínima de 1
     
-    // Inicializar tempo de disparo personalizado (±20% do tempo base)
-    int tempo_disparo_base = 30; // Tempo base de disparo
-    float fator_disparo = 0.8f + (rand() % 41) / 100.0f; // Entre 0.8 e 1.2
+    // Inicializar tempo de disparo personalizado (±50% do tempo base)
+    int tempo_disparo_base = 60; // Tempo base de disparo dobrado (metade da frequência)
+    float fator_disparo = 0.5f + (rand() % 101) / 100.0f; // Entre 0.5 e 1.5
     bat->tempo_disparo_personalizado = (int)(tempo_disparo_base * fator_disparo);
     if (bat->tempo_disparo_personalizado < 20) bat->tempo_disparo_personalizado = 20; // Mínimo de 20
     
     // Inicializar foguetes
     for (int i = 0; i < MAX_FOGUETES; i++) {
         bat->foguetes[i].ativo = false;
-        bat->foguetes[i].velocidade = FOGUETE_VELOCIDADE;
+        bat->foguetes[i].velocidade = FOGUETE_VELOCIDADE / 2;
         bat->foguetes[i].direcao = -1; // Foguetes sempre disparam para cima
     }
     bat->tempo_ultimo_disparo = 0;
@@ -294,32 +294,17 @@ bool verificar_colisao_foguete_helicoptero(Foguete* foguete, Posicao heli_pos, i
 
 // Implementação da thread da bateria
 void* thread_bateria(void* arg) {
-    Bateria *bat = (Bateria *)arg;
-    
-    // Declaração externa dos mutexes e constantes (definidos em main.c)
-    extern pthread_mutex_t mutex_render;
     extern bool jogo_ativo;
-    #define LARGURA 800  // Constante da largura da tela
-    #define ALTURA 600   // Constante da altura da tela
-    
+    #define LARGURA 800
+    #define ALTURA 600
+    Bateria *bat = (Bateria *)arg;
     while (bat->ativa && jogo_ativo) {
-        pthread_mutex_lock(&mutex_render);
-        
-        // Mover a bateria
         mover_bateria(bat, LARGURA);
-        
-        // Mover foguetes existentes
         mover_foguetes(bat, ALTURA);
-        
-        // Tentar disparar foguete (se tiver foguetes e tempo suficiente)
         bat->tempo_ultimo_disparo++;
         if (bat->foguetes_atual > 0 && bat->tempo_ultimo_disparo > bat->tempo_disparo_personalizado) {
             disparar_foguete(bat);
         }
-        
-        pthread_mutex_unlock(&mutex_render);
-        
-        // Lógica de disparo, etc.
         usleep(16000); // 16ms para 60fps
     }
     return NULL;

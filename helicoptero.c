@@ -30,7 +30,7 @@ void desenhar_helicoptero(SDL_Renderer* renderer, Helicoptero* heli) {
 
 void mover_helicoptero(Helicoptero* heli, const TeclasMovimento* teclas) {
     int dx = 0, dy = 0;
-    int velocidade = 5;
+    int velocidade = 2;
     if (teclas->w) dy -= 1;
     if (teclas->s) dy += 1;
     if (teclas->a) dx -= 1;
