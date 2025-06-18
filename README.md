@@ -79,7 +79,7 @@ gcc main.c helicoptero.c bateria.c recarregador.c -o jogo -pthread $(sdl2-config
 Windows:
 
 ```bash
-cc main.c helicoptero.c bateria.c recarregador.c -o jogo.exe -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf -mwindows -pthread
+gcc main.c helicoptero.c bateria.c recarregador.c -o jogo.exe -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf -mwindows -pthread
 ```
 
 > Se estiver em outro sistema, ajuste os caminhos de acordo com a instalação da SDL2.

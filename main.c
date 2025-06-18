@@ -17,10 +17,15 @@
 // Constantes do jogo
 #define LARGURA 800
 #define ALTURA 600
-#define SOLDIERS 10
+#define NUM_SOLDADOS 10
 #define NUM_BATERIAS 2
 #define SOLDADOS_PARA_VITORIA 10
 #define MAX_FOGUETES 20  // Máximo de foguetes por bateria
+
+// Constantes dos soldados
+#define SOLDADO_W 20
+#define SOLDADO_H 30
+#define SOLDADO_ESPACAMENTO -8  // Espaçamento negativo para sobreposição
 
 // Constantes da ponte
 #define PONTE_LARGURA 150  // Aumentada de 100 para 150 (50% mais larga)
@@ -36,6 +41,7 @@ SDL_Texture* fundo_texture = NULL;
 SDL_Texture* grama_texture = NULL;
 SDL_Texture* grama_esquerda_texture = NULL;
 SDL_Texture* ponte_texture = NULL;
+SDL_Texture* soldado_texture = NULL;
 Helicoptero helicoptero = {
     .pos = {.x = 50, .y = ALTURA/2},
     .ativo = true,
@@ -54,6 +60,21 @@ Recarregador recarregador = {
 
 // Array de baterias
 Bateria baterias[NUM_BATERIAS];
+
+// Estrutura para representar um soldado
+typedef struct {
+    Posicao pos;
+    bool ativo;           // Se o soldado ainda está no lado esquerdo
+    bool sendo_carregado; // Se está sendo carregado pelo helicóptero
+    bool resgatado;       // Se já foi resgatado (no lado direito)
+} Soldado;
+
+// Array de soldados
+Soldado soldados[NUM_SOLDADOS];
+
+// Variáveis de controle do resgate
+bool helicoptero_carregando_soldado = false;
+int soldado_em_transporte = -1;  // ID do soldado sendo transportado (-1 = nenhum)
 
 // Definição dos mutexes e variáveis de condição
 pthread_mutex_t mutex_deposito = PTHREAD_MUTEX_INITIALIZER;
@@ -74,6 +95,10 @@ void* thread_bateria(void* arg);
 void desenhar_foguetes(SDL_Renderer* renderer, Bateria* bat);
 bool verificar_colisao_foguete_helicoptero(Foguete* foguete, Posicao heli_pos, int heli_w, int heli_h);
 void alterar_nivel_dificuldade(NivelDificuldade novo_nivel);
+void desenhar_soldados(SDL_Renderer* renderer);
+void inicializar_soldados(void);
+void verificar_colisao_helicoptero_soldados(void);
+void soltar_soldado(void);
 
 // Função para desenhar texto na tela
 void desenhar_texto(SDL_Renderer* rend, TTF_Font* font, const char* texto, SDL_Color color, int x, int y) {
@@ -92,6 +117,116 @@ void desenhar_texto(SDL_Renderer* rend, TTF_Font* font, const char* texto, SDL_C
     SDL_RenderCopy(rend, texture, NULL, &dst);
     SDL_FreeSurface(surface);
     SDL_DestroyTexture(texture);
+}
+
+// Função para desenhar os soldados do lado esquerdo do carregador
+void desenhar_soldados(SDL_Renderer* renderer) {
+    // Desenhar soldados ativos (lado esquerdo)
+    for (int i = 0; i < NUM_SOLDADOS; i++) {
+        if (soldados[i].ativo) {
+            SDL_Rect soldado_rect = {
+                soldados[i].pos.x,
+                soldados[i].pos.y,
+                SOLDADO_W,
+                SOLDADO_H
+            };
+            
+            if (soldado_texture) {
+                SDL_RenderCopy(renderer, soldado_texture, NULL, &soldado_rect);
+            } else {
+                // Fallback: desenhar um retângulo verde se a textura não carregar
+                SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+                SDL_RenderFillRect(renderer, &soldado_rect);
+            }
+        }
+    }
+    
+    // Desenhar soldados resgatados (lado direito)
+    for (int i = 0; i < NUM_SOLDADOS; i++) {
+        if (soldados[i].resgatado) {
+            SDL_Rect soldado_rect = {
+                soldados[i].pos.x,
+                soldados[i].pos.y,
+                SOLDADO_W,
+                SOLDADO_H
+            };
+            
+            if (soldado_texture) {
+                SDL_RenderCopy(renderer, soldado_texture, NULL, &soldado_rect);
+            } else {
+                // Fallback: desenhar um retângulo azul para soldados resgatados
+                SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+                SDL_RenderFillRect(renderer, &soldado_rect);
+            }
+        }
+    }
+}
+
+// Função para inicializar os soldados
+void inicializar_soldados(void) {
+    int soldado_x_inicial = 3;
+    int soldado_y = ALTURA - 40 - SOLDADO_H;
+    
+    for (int i = 0; i < NUM_SOLDADOS; i++) {
+        soldados[i].pos.x = soldado_x_inicial + i * (SOLDADO_W + SOLDADO_ESPACAMENTO);
+        soldados[i].pos.y = soldado_y;
+        soldados[i].ativo = true;
+        soldados[i].sendo_carregado = false;
+        soldados[i].resgatado = false;
+    }
+}
+
+// Função para verificar colisão entre helicóptero e soldados
+void verificar_colisao_helicoptero_soldados(void) {
+    // Só verifica se o helicóptero não está carregando outro soldado
+    if (!helicoptero_carregando_soldado) {
+        for (int i = 0; i < NUM_SOLDADOS; i++) {
+            if (soldados[i].ativo && !soldados[i].sendo_carregado && !soldados[i].resgatado) {
+                // Verificar colisão AABB
+                if (helicoptero.pos.x < soldados[i].pos.x + SOLDADO_W &&
+                    helicoptero.pos.x + HELI_W > soldados[i].pos.x &&
+                    helicoptero.pos.y < soldados[i].pos.y + SOLDADO_H &&
+                    helicoptero.pos.y + HELI_H > soldados[i].pos.y) {
+                    
+                    // Helicóptero pegou o soldado
+                    helicoptero_carregando_soldado = true;
+                    soldado_em_transporte = i;
+                    soldados[i].sendo_carregado = true;
+                    soldados[i].ativo = false;  // Remove do lado esquerdo
+                    
+                    printf("Helicóptero pegou o soldado %d!\n", i);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// Função para soltar o soldado no lado direito
+void soltar_soldado(void) {
+    if (helicoptero_carregando_soldado && soldado_em_transporte >= 0) {
+        // Verificar se o helicóptero está no lado direito da tela
+        if (helicoptero.pos.x > LARGURA - 100) {  // 100 pixels do lado direito
+            // Verificar se está próximo ao chão
+            if (helicoptero.pos.y > ALTURA - 100) {  // 100 pixels do chão
+                // Soltar o soldado
+                soldados[soldado_em_transporte].sendo_carregado = false;
+                soldados[soldado_em_transporte].resgatado = true;
+                soldados[soldado_em_transporte].pos.x = helicoptero.pos.x;
+                soldados[soldado_em_transporte].pos.y = ALTURA - 40 - SOLDADO_H;
+                
+                // Incrementar contador
+                soldados_resgatados++;
+                
+                printf("Soldado %d foi resgatado! Total: %d/%d\n", 
+                       soldado_em_transporte, soldados_resgatados, SOLDADOS_PARA_VITORIA);
+                
+                // Resetar variáveis de controle
+                helicoptero_carregando_soldado = false;
+                soldado_em_transporte = -1;
+            }
+        }
+    }
 }
 
 // Função para inicializar SDL e SDL_image
@@ -128,7 +263,7 @@ bool init_sdl() {
         printf("Erro ao carregar fundo.png: %s\n", IMG_GetError());
     }
 
-      foguete_texture = IMG_LoadTexture(renderer, "foguete.png");
+    foguete_texture = IMG_LoadTexture(renderer, "foguete.png");
     if (!foguete_texture) {
         printf("Erro ao carregar foguete.png: %s\n", IMG_GetError());
     }
@@ -145,6 +280,11 @@ bool init_sdl() {
     ponte_texture = IMG_LoadTexture(renderer, "ponte.png");
     if (!ponte_texture) {
         printf("Erro ao carregar ponte.png: %s\n", IMG_GetError());
+    }
+
+    soldado_texture = IMG_LoadTexture(renderer, "soldado.png");
+    if (!soldado_texture) {
+        printf("Erro ao carregar soldado.png: %s\n", IMG_GetError());
     }
 
     // Carregar fonte
@@ -181,6 +321,9 @@ bool init_sdl() {
         inicializar_bateria(&baterias[i], nivel_dificuldade_global);  // Usar nível global
     }
     
+    // Inicializar soldados
+    inicializar_soldados();
+    
     return true;
 }
 
@@ -201,6 +344,7 @@ void cleanup_sdl() {
     if (grama_texture) SDL_DestroyTexture(grama_texture);
     if (grama_esquerda_texture) SDL_DestroyTexture(grama_esquerda_texture);
     if (ponte_texture) SDL_DestroyTexture(ponte_texture);
+    if (soldado_texture) SDL_DestroyTexture(soldado_texture);
     if (window) SDL_DestroyWindow(window);
     IMG_Quit();
     TTF_Quit();
@@ -213,6 +357,13 @@ void* thread_helicoptero(void* arg) {
         pthread_mutex_lock(&mutex_render);
         mover_helicoptero(&helicoptero, tecla_pressionada);
         tecla_pressionada = 0;
+        
+        // Verificar colisão com soldados
+        verificar_colisao_helicoptero_soldados();
+        
+        // Verificar se deve soltar soldado
+        soltar_soldado();
+        
         // Verificar colisão com as bordas da tela
         if (helicopero_fora_da_tela(&helicoptero, LARGURA, ALTURA)) {
             strcpy(motivo_derrota, "O helicóptero colidiu com a parede!");
@@ -269,6 +420,20 @@ void* thread_render(void* arg) {
         
         // Desenhar helicóptero
         desenhar_helicoptero(renderer, &helicoptero);
+        
+        // Indicar visualmente se o helicóptero está carregando um soldado
+        if (helicoptero_carregando_soldado) {
+            // Desenhar um círculo verde acima do helicóptero
+            SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+            int center_x = helicoptero.pos.x + HELI_W / 2;
+            int center_y = helicoptero.pos.y - 10;
+            int radius = 8;
+            
+            // Desenhar círculo simples (aproximação com retângulos)
+            SDL_Rect indicador = {center_x - radius, center_y - radius, radius * 2, radius * 2};
+            SDL_RenderFillRect(renderer, &indicador);
+        }
+        
         // Desenhar recarregador fixo
         desenhar_recarregador(renderer, &recarregador);
         // Desenhar baterias
@@ -287,6 +452,9 @@ void* thread_render(void* arg) {
         const char* nomes_nivel[] = {"FACIL", "MEDIO", "DIFICIL"};
         sprintf(texto_nivel, "Nivel: %s", nomes_nivel[nivel_dificuldade_global]);
         desenhar_texto(renderer, fonte_padrao, texto_nivel, cor_branca, 10, 40);
+
+        // Desenhar soldados do lado esquerdo do carregador
+        desenhar_soldados(renderer);
 
         // Atualizar tela
         SDL_RenderPresent(renderer);
@@ -348,15 +516,6 @@ void* thread_recarregador(void* arg) {
     return NULL;
 }
 
-// Simulação: aumentar soldados resgatados a cada 3 segundos (placeholder)
-void* simula_soldados(void* arg) {
-    while (jogo_ativo && soldados_resgatados < SOLDADOS_PARA_VITORIA) {
-        sleep(3);
-        soldados_resgatados++;
-    }
-    return NULL;
-}
-
 // Função para alterar o nível de dificuldade global
 void alterar_nivel_dificuldade(NivelDificuldade novo_nivel) {
     nivel_dificuldade_global = novo_nivel;
@@ -385,7 +544,7 @@ int main() {
     
     printf("SDL inicializado com sucesso!\n");
 
-    pthread_t t_heli, t_render, t_rec, t_simula;
+    pthread_t t_heli, t_render, t_rec;
     pthread_t t_baterias[NUM_BATERIAS]; // Threads para as baterias
 
     // Criar threads
@@ -393,7 +552,6 @@ int main() {
     pthread_create(&t_heli, NULL, thread_helicoptero, NULL);
     pthread_create(&t_render, NULL, thread_render, NULL);
     pthread_create(&t_rec, NULL, thread_recarregador, NULL);
-    pthread_create(&t_simula, NULL, simula_soldados, NULL);
     
     // Criar threads para as baterias
     for (int i = 0; i < NUM_BATERIAS; i++) {
@@ -416,6 +574,13 @@ int main() {
                     case SDLK_s: tecla_pressionada = 's'; break;
                     case SDLK_a: tecla_pressionada = 'a'; break;
                     case SDLK_d: tecla_pressionada = 'd'; break;
+                    case SDLK_e: 
+                        if (helicoptero_carregando_soldado) {
+                            pthread_mutex_lock(&mutex_render);
+                            soltar_soldado();
+                            pthread_mutex_unlock(&mutex_render);
+                        }
+                        break;
                     case SDLK_q: jogo_ativo = false; break;
                     case SDLK_1: alterar_nivel_dificuldade(FACIL); break;   // Tecla 1 para nível fácil
                     case SDLK_2: alterar_nivel_dificuldade(MEDIO); break;   // Tecla 2 para nível médio
@@ -437,7 +602,6 @@ int main() {
     pthread_join(t_heli, NULL);
     pthread_join(t_render, NULL);
     pthread_join(t_rec, NULL);
-    pthread_join(t_simula, NULL);
     
     // Aguardar threads das baterias terminarem
     for (int i = 0; i < NUM_BATERIAS; i++) {
