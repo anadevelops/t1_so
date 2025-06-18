@@ -98,22 +98,14 @@ void desenhar_bateria(SDL_Renderer* renderer, Bateria* bat) {
 }
 
 void mover_bateria(Bateria* bat, int largura_tela) {
-    if (!bat->ativa || bat->conectada) {
-        return; // Não move se não estiver ativa ou estiver conectada
+    if (!bat->ativa) {
+        return; // Não move se não estiver ativa
     }
     
     // Verificar se a bateria está sendo recarregada
     if (bat->recarregando) {
         bat->tempo_recarga_atual++;
-        if (bat->tempo_recarga_atual >= bat->tempo_recarga_total) {
-            // Recarga completa
-            bat->recarregando = false;
-            bat->foguetes_atual = bat->foguetes_max; // Recarregar munição
-            bat->voltando_para_area_original = true; // Começar a voltar
-            bat->tempo_recarga_atual = 0;
-            printf("Bateria %d recarga completa! Voltando para área original\n", bat->id);
-        }
-        return; // Não move durante a recarga
+        return; // Não move durante a recarga; recarregador controla o fim
     }
     
     // Verificar se a bateria está voltando para sua área original

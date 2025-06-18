@@ -90,6 +90,15 @@ int soldados_resgatados = 0;
 NivelDificuldade nivel_dificuldade_global = FACIL;  // Nível de dificuldade global do jogo
 int bateria_atravessando_ponte = -1;  // ID da bateria atravessando a ponte (-1 = nenhuma)
 
+// Adicionar enum para estados do jogo
+typedef enum { MENU, JOGO } GameState;
+GameState estado_jogo = MENU;
+
+// Variáveis para menu
+int menu_opcao = 0; // 0: Start, 1: Dificuldade, 2: Quit
+int menu_dificuldade = 0; // 0: FACIL, 1: MEDIO, 2: DIFICIL
+int ultimo_score = -1;
+
 // Declarações de funções
 void* thread_bateria(void* arg);
 void desenhar_foguetes(SDL_Renderer* renderer, Bateria* bat);
@@ -99,10 +108,11 @@ void desenhar_soldados(SDL_Renderer* renderer);
 void inicializar_soldados(void);
 void verificar_colisao_helicoptero_soldados(void);
 void soltar_soldado(void);
+void desenhar_menu(SDL_Renderer* renderer);
 
 // Função para desenhar texto na tela
 void desenhar_texto(SDL_Renderer* rend, TTF_Font* font, const char* texto, SDL_Color color, int x, int y) {
-    SDL_Surface* surface = TTF_RenderText_Solid(font, texto, color);
+    SDL_Surface* surface = TTF_RenderUTF8_Solid(font, texto, color);
     if (!surface) {
         printf("Erro ao renderizar texto: %s\n", TTF_GetError());
         return;
@@ -371,86 +381,60 @@ void* thread_helicoptero(void* arg) {
 void* thread_render(void* arg) {
     char texto_soldados[50];
     SDL_Color cor_branca = {255, 255, 255, 255};
-
-    while (jogo_ativo) {
+    while (1) {
         pthread_mutex_lock(&mutex_render);
-        // Limpar tela
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-        
-        if (fundo_texture) {
-            SDL_Rect dst = {0, 0, LARGURA, ALTURA};
-            SDL_RenderCopy(renderer, fundo_texture, NULL, &dst);
-        }
-
-        // Desenhar chão (duas seções cinzas separadas pela ponte)
-        SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255); // Cor cinza
-        
-        // Seção esquerda do chão
-        SDL_Rect chao_esquerdo = {0, ALTURA - 40, PONTE_X, 40};
-        SDL_RenderCopy(renderer, grama_esquerda_texture, NULL, &chao_esquerdo);
-        
-        // Seção direita do chão
-        if (grama_texture) {
-            SDL_Rect chao_direito = {PONTE_X + PONTE_LARGURA, ALTURA - 40, LARGURA - (PONTE_X + PONTE_LARGURA), 40};
-            SDL_RenderCopy(renderer, grama_texture, NULL, &chao_direito);
+        if (estado_jogo == MENU) {
+            desenhar_menu(renderer);
         } else {
+            if (fundo_texture) {
+                SDL_Rect dst = {0, 0, LARGURA, ALTURA};
+                SDL_RenderCopy(renderer, fundo_texture, NULL, &dst);
+            }
             SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
-            SDL_Rect chao_direito = {PONTE_X + PONTE_LARGURA, ALTURA - 40, LARGURA - (PONTE_X + PONTE_LARGURA), 40};
-            SDL_RenderFillRect(renderer, &chao_direito);
+            SDL_Rect chao_esquerdo = {0, ALTURA - 40, PONTE_X, 40};
+            SDL_RenderCopy(renderer, grama_esquerda_texture, NULL, &chao_esquerdo);
+            if (grama_texture) {
+                SDL_Rect chao_direito = {PONTE_X + PONTE_LARGURA, ALTURA - 40, LARGURA - (PONTE_X + PONTE_LARGURA), 40};
+                SDL_RenderCopy(renderer, grama_texture, NULL, &chao_direito);
+            } else {
+                SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
+                SDL_Rect chao_direito = {PONTE_X + PONTE_LARGURA, ALTURA - 40, LARGURA - (PONTE_X + PONTE_LARGURA), 40};
+                SDL_RenderFillRect(renderer, &chao_direito);
+            }
+            SDL_Rect ponte = {PONTE_X, ALTURA - 40, PONTE_LARGURA, PONTE_ALTURA};
+            if (ponte_texture) {
+                SDL_RenderCopy(renderer, ponte_texture, NULL, &ponte);
+            } else {
+                SDL_SetRenderDrawColor(renderer, 139, 69, 19, 255);
+                SDL_RenderFillRect(renderer, &ponte);
+            }
+            desenhar_helicoptero(renderer, &helicoptero);
+            if (helicoptero_carregando_soldado) {
+                SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+                int center_x = helicoptero.pos.x + HELI_W / 2;
+                int center_y = helicoptero.pos.y - 10;
+                int radius = 8;
+                SDL_Rect indicador = {center_x - radius, center_y - radius, radius * 2, radius * 2};
+                SDL_RenderFillRect(renderer, &indicador);
+            }
+            desenhar_recarregador(renderer, &recarregador);
+            for (int i = 0; i < NUM_BATERIAS; i++) {
+                desenhar_bateria(renderer, &baterias[i]);
+                desenhar_foguetes(renderer, &baterias[i]);
+            }
+            sprintf(texto_soldados, "Soldados: %d/%d", soldados_resgatados, SOLDADOS_PARA_VITORIA);
+            desenhar_texto(renderer, fonte_padrao, texto_soldados, cor_branca, 10, 10);
+            char texto_nivel[50];
+            const char* nomes_nivel[] = {"FACIL", "MEDIO", "DIFICIL"};
+            sprintf(texto_nivel, "Nivel: %s", nomes_nivel[nivel_dificuldade_global]);
+            desenhar_texto(renderer, fonte_padrao, texto_nivel, cor_branca, 10, 40);
+            desenhar_soldados(renderer);
         }
-        
-        // Desenhar ponte
-        SDL_Rect ponte = {PONTE_X, ALTURA - 40, PONTE_LARGURA, PONTE_ALTURA};
-        if (ponte_texture) {
-            SDL_RenderCopy(renderer, ponte_texture, NULL, &ponte);
-        } else {
-            SDL_SetRenderDrawColor(renderer, 139, 69, 19, 255);
-            SDL_RenderFillRect(renderer, &ponte);
-        }
-        
-        // Desenhar helicóptero
-        desenhar_helicoptero(renderer, &helicoptero);
-        
-        // Indicar visualmente se o helicóptero está carregando um soldado
-        if (helicoptero_carregando_soldado) {
-            // Desenhar um círculo verde acima do helicóptero
-            SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-            int center_x = helicoptero.pos.x + HELI_W / 2;
-            int center_y = helicoptero.pos.y - 10;
-            int radius = 8;
-            
-            // Desenhar círculo simples (aproximação com retângulos)
-            SDL_Rect indicador = {center_x - radius, center_y - radius, radius * 2, radius * 2};
-            SDL_RenderFillRect(renderer, &indicador);
-        }
-        
-        // Desenhar recarregador fixo
-        desenhar_recarregador(renderer, &recarregador);
-        // Desenhar baterias
-        for (int i = 0; i < NUM_BATERIAS; i++) {
-            desenhar_bateria(renderer, &baterias[i]);
-            // Desenhar foguetes da bateria
-            desenhar_foguetes(renderer, &baterias[i]);
-        }
-
-        // (HUD) Exibir contador de soldados resgatados na tela
-        sprintf(texto_soldados, "Soldados: %d/%d", soldados_resgatados, SOLDADOS_PARA_VITORIA);
-        desenhar_texto(renderer, fonte_padrao, texto_soldados, cor_branca, 10, 10);
-        
-        // Exibir nível de dificuldade atual
-        char texto_nivel[50];
-        const char* nomes_nivel[] = {"FACIL", "MEDIO", "DIFICIL"};
-        sprintf(texto_nivel, "Nivel: %s", nomes_nivel[nivel_dificuldade_global]);
-        desenhar_texto(renderer, fonte_padrao, texto_nivel, cor_branca, 10, 40);
-
-        // Desenhar soldados do lado esquerdo do carregador
-        desenhar_soldados(renderer);
-
-        // Atualizar tela
         SDL_RenderPresent(renderer);
         pthread_mutex_unlock(&mutex_render);
-        usleep(16000); // 16ms para 60fps
+        usleep(16000);
     }
     return NULL;
 }
@@ -517,92 +501,205 @@ void alterar_nivel_dificuldade(NivelDificuldade novo_nivel) {
     printf("Nível de dificuldade alterado para: %d\n", novo_nivel);
 }
 
+// Adicionar função para desenhar o menu
+void desenhar_menu(SDL_Renderer* renderer) {
+    SDL_Color cor_branca = {255, 255, 255, 255};
+    SDL_Color cor_amarela = {255, 255, 0, 255};
+    int y = 120;
+    // Centralizar o título
+    const char* titulo = "RESGATE DE SOLDADOS";
+    int tw = 0, th = 0;
+    if (fonte_padrao) {
+        TTF_SizeUTF8(fonte_padrao, titulo, &tw, &th);
+    }
+    int x_titulo = (LARGURA - tw) / 2;
+    desenhar_texto(renderer, fonte_padrao, titulo, cor_branca, x_titulo, y);
+    y += 80;
+    // Centralizar os botões do menu (sem setas)
+    const char* start_str = "Iniciar Jogo";
+    int sw = 0, sh = 0;
+    TTF_SizeUTF8(fonte_padrao, start_str, &sw, &sh);
+    int x_start = (LARGURA - sw) / 2;
+    desenhar_texto(renderer, fonte_padrao, start_str, menu_opcao == 0 ? cor_amarela : cor_branca, x_start, y);
+    y += 50;
+    // Dificuldade
+    const char* nomes_nivel[] = {"FACIL", "MEDIO", "DIFICIL"};
+    char buf[64];
+    snprintf(buf, sizeof(buf), "Dificuldade: %s", nomes_nivel[menu_dificuldade]);
+    int dw = 0, dh = 0;
+    TTF_SizeUTF8(fonte_padrao, buf, &dw, &dh);
+    int x_dif = (LARGURA - dw) / 2;
+    desenhar_texto(renderer, fonte_padrao, buf, menu_opcao == 1 ? cor_amarela : cor_branca, x_dif, y);
+    y += 50;
+    // Quit
+    const char* quit_str = "Sair";
+    int qw = 0, qh = 0;
+    TTF_SizeUTF8(fonte_padrao, quit_str, &qw, &qh);
+    int x_quit = (LARGURA - qw) / 2;
+    desenhar_texto(renderer, fonte_padrao, quit_str, menu_opcao == 2 ? cor_amarela : cor_branca, x_quit, y);
+    // Último score no canto inferior esquerdo
+    if (ultimo_score >= 0) {
+        char scorebuf[64];
+        snprintf(scorebuf, sizeof(scorebuf), "Última pontuação: %d", ultimo_score);
+        int sw = 0, sh = 0;
+        if (fonte_padrao) {
+            TTF_SizeUTF8(fonte_padrao, scorebuf, &sw, &sh);
+        }
+        desenhar_texto(renderer, fonte_padrao, scorebuf, cor_branca, 10, ALTURA - sh - 10);
+    }
+}
+
+// Atualizar main loop para lidar com o menu
 int main() {
     printf("Iniciando o jogo...\n");
-    
-    // Inicializar gerador de números aleatórios
     srand(time(NULL));
-    
     if (!init_sdl()) {
         printf("Falha na inicialização do SDL!\n");
         return 1;
     }
-    
     printf("SDL inicializado com sucesso!\n");
 
     pthread_t t_heli, t_render, t_rec;
-    pthread_t t_baterias[NUM_BATERIAS]; // Threads para as baterias
+    pthread_t t_baterias[NUM_BATERIAS];
 
-    // Criar threads
-    printf("Criando threads...\n");
-    pthread_create(&t_heli, NULL, thread_helicoptero, NULL);
+    // Criar thread de renderização (sempre ativa)
     pthread_create(&t_render, NULL, thread_render, NULL);
-    pthread_create(&t_rec, NULL, thread_recarregador, NULL);
-    
-    // Criar threads para as baterias
-    for (int i = 0; i < NUM_BATERIAS; i++) {
-        pthread_create(&t_baterias[i], NULL, thread_bateria, &baterias[i]);
-    }
-    
-    printf("Threads criadas!\n");
 
-    // Loop principal (na thread principal)
-    printf("Iniciando loop principal...\n");
     SDL_Event event;
-    while (jogo_ativo) {
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) {
-                jogo_ativo = false;
-            }
-            else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
-                bool pressed = (event.type == SDL_KEYDOWN);
-                switch (event.key.keysym.sym) {
-                    case SDLK_w: teclas_mov.w = pressed; break;
-                    case SDLK_s: teclas_mov.s = pressed; break;
-                    case SDLK_a: teclas_mov.a = pressed; break;
-                    case SDLK_d: teclas_mov.d = pressed; break;
-                    case SDLK_e: 
-                        if (pressed && helicoptero_carregando_soldado) {
-                            pthread_mutex_lock(&mutex_render);
-                            soltar_soldado();
-                            pthread_mutex_unlock(&mutex_render);
-                        }
-                        break;
-                    case SDLK_q: if (pressed) jogo_ativo = false; break;
-                    case SDLK_1: if (pressed) alterar_nivel_dificuldade(FACIL); break;
-                    case SDLK_2: if (pressed) alterar_nivel_dificuldade(MEDIO); break;
-                    case SDLK_3: if (pressed) alterar_nivel_dificuldade(DIFICIL); break;
+    while (1) {
+        if (estado_jogo == MENU) {
+            // Menu principal
+            while (SDL_PollEvent(&event)) {
+                if (event.type == SDL_QUIT) return 0;
+                if (event.type == SDL_KEYDOWN) {
+                    switch (event.key.keysym.sym) {
+                        case SDLK_UP:
+                        case SDLK_w:
+                            menu_opcao = (menu_opcao + 2) % 3;
+                            break;
+                        case SDLK_DOWN:
+                        case SDLK_s:
+                            menu_opcao = (menu_opcao + 1) % 3;
+                            break;
+                        case SDLK_LEFT:
+                        case SDLK_a:
+                        case SDLK_RIGHT:
+                        case SDLK_d:
+                            if (menu_opcao == 1) {
+                                if (event.key.keysym.sym == SDLK_LEFT || event.key.keysym.sym == SDLK_a)
+                                    menu_dificuldade = (menu_dificuldade + 2) % 3;
+                                else
+                                    menu_dificuldade = (menu_dificuldade + 1) % 3;
+                            }
+                            break;
+                        case SDLK_RETURN:
+                        case SDLK_KP_ENTER:
+                        case SDLK_SPACE:
+                            if (menu_opcao == 0) { // Start
+                                // Setar dificuldade
+                                nivel_dificuldade_global = (NivelDificuldade)menu_dificuldade;
+                                // Resetar variáveis do jogo
+                                soldados_resgatados = 0;
+                                helicoptero.pos.x = 50;
+                                helicoptero.pos.y = ALTURA/2;
+                                helicoptero.ativo = true;
+                                helicoptero_carregando_soldado = false;
+                                soldado_em_transporte = -1;
+                                motivo_derrota[0] = '\0';
+                                for (int i = 0; i < NUM_SOLDADOS; i++) {
+                                    soldados[i].ativo = true;
+                                    soldados[i].sendo_carregado = false;
+                                    soldados[i].resgatado = false;
+                                    soldados[i].pos.x = 3 + i * (SOLDADO_W + SOLDADO_ESPACAMENTO);
+                                    soldados[i].pos.y = ALTURA - 40 - SOLDADO_H;
+                                }
+                                for (int i = 0; i < NUM_BATERIAS; i++) {
+                                    baterias[i].id = i;
+                                    baterias[i].pos.y = ALTURA - 40 - BAT_H;
+                                    baterias[i].conectada = false;
+                                    baterias[i].na_ponte = false;
+                                    baterias[i].recarregando = false;
+                                    baterias[i].voltando_para_area_original = false;
+                                    baterias[i].tempo_recarga_atual = 0;
+                                    baterias[i].nivel = nivel_dificuldade_global;
+                                    baterias[i].ativa = true;
+                                    baterias[i].tempo_ultimo_disparo = 0;
+                                    baterias[i].foguetes_atual = 0;
+                                    baterias[i].foguetes_max = 0;
+                                    baterias[i].tempo_disparo_personalizado = 0;
+                                    baterias[i].velocidade = 0;
+                                    baterias[i].direcao = (i == 0) ? 1 : -1;
+                                    if (i == 0)
+                                        baterias[i].pos.x = 600 - BAT_W - 20;
+                                    else
+                                        baterias[i].pos.x = 320;
+                                    inicializar_bateria(&baterias[i], nivel_dificuldade_global);
+                                }
+                                inicializar_recarregador(&recarregador, nivel_dificuldade_global);
+                                jogo_ativo = true;
+                                pthread_create(&t_heli, NULL, thread_helicoptero, NULL);
+                                pthread_create(&t_rec, NULL, thread_recarregador, NULL);
+                                for (int i = 0; i < NUM_BATERIAS; i++)
+                                    pthread_create(&t_baterias[i], NULL, thread_bateria, &baterias[i]);
+                                estado_jogo = JOGO;
+                            } else if (menu_opcao == 1) {
+                                // Nada, só muda dificuldade
+                            } else if (menu_opcao == 2) {
+                                // Quit
+                                goto sair;
+                            }
+                            break;
+                    }
                 }
             }
-        }
-        usleep(10000);
-        // Lógica de vitória
-        if (soldados_resgatados >= SOLDADOS_PARA_VITORIA) {
-            strcpy(motivo_derrota, "Vitória! Todos os soldados foram resgatados!");
-            printf("\n%s\n", motivo_derrota);
-            jogo_ativo = false;
+            usleep(10000);
+        } else if (estado_jogo == JOGO) {
+            // Loop principal do jogo
+            while (SDL_PollEvent(&event)) {
+                if (event.type == SDL_QUIT) {
+                    jogo_ativo = false;
+                    goto sair;
+                }
+                else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
+                    bool pressed = (event.type == SDL_KEYDOWN);
+                    switch (event.key.keysym.sym) {
+                        case SDLK_w:
+                        case SDLK_UP: teclas_mov.w = pressed; break;
+                        case SDLK_s:
+                        case SDLK_DOWN: teclas_mov.s = pressed; break;
+                        case SDLK_a:
+                        case SDLK_LEFT: teclas_mov.a = pressed; break;
+                        case SDLK_d:
+                        case SDLK_RIGHT: teclas_mov.d = pressed; break;
+                        case SDLK_e:
+                            if (pressed && helicoptero_carregando_soldado) {
+                                soltar_soldado();
+                            }
+                            break;
+                        case SDLK_q: if (pressed) { jogo_ativo = false; goto sair; } break;
+                    }
+                }
+            }
+            usleep(10000);
+            // Lógica de vitória/derrota
+            if (!jogo_ativo || soldados_resgatados >= SOLDADOS_PARA_VITORIA || motivo_derrota[0] != '\0') {
+                // Salvar score
+                ultimo_score = soldados_resgatados;
+                // Encerrar threads
+                pthread_cancel(t_heli);
+                pthread_cancel(t_rec);
+                for (int i = 0; i < NUM_BATERIAS; i++) pthread_cancel(t_baterias[i]);
+                estado_jogo = MENU;
+            }
         }
     }
-
-    printf("Finalizando threads...\n");
-    // Aguardar threads terminarem
-    pthread_join(t_heli, NULL);
-    pthread_join(t_render, NULL);
-    pthread_join(t_rec, NULL);
-    
-    // Aguardar threads das baterias terminarem
-    for (int i = 0; i < NUM_BATERIAS; i++) {
-        pthread_join(t_baterias[i], NULL);
-    }
-
+sair:
     printf("Limpando recursos...\n");
     cleanup_sdl();
-
     pthread_mutex_destroy(&mutex_deposito);
     pthread_mutex_destroy(&mutex_ponte);
     pthread_mutex_destroy(&mutex_render);
     pthread_cond_destroy(&cond_recarga);
-
     printf("Jogo finalizado!\n");
     return 0;
 }

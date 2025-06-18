@@ -2,6 +2,7 @@
 #include "tipos.h" // Para REC_W e REC_H
 #include <stdio.h>
 #include <SDL2/SDL_image.h> // Para IMG_LoadTexture
+#include "bateria.h"
 
 bool carregar_recarregador(SDL_Renderer* renderer, Recarregador* rec, const char* caminho_img) {
     if (caminho_img) {
@@ -50,13 +51,15 @@ void inicializar_recarregador(Recarregador* rec, NivelDificuldade nivel) {
 }
 
 void atualizar_recarregador(Recarregador* rec) {
-    if (rec->ocupado) {
+    if (rec->ocupado && rec->bateria_conectada) {
         rec->tempo_atual += 100; // Incrementa tempo a cada 100ms de verificação (do thread_recarregador)
+        Bateria* bat = (Bateria*)rec->bateria_conectada;
         if (rec->tempo_atual >= rec->tempo_recarga) {
             // Recarga completa
-            // Aqui você chamaria uma função para notificar a bateria que ela foi recarregada
-            // Por enquanto, apenas libera o recarregador
-            // desconectar_bateria(rec);
+            bat->conectada = false;
+            bat->recarregando = false;
+            bat->voltando_para_area_original = true;
+            bat->foguetes_atual = bat->foguetes_max;
             rec->ocupado = false;
             rec->bateria_conectada = NULL;
             rec->tempo_atual = 0;
@@ -69,6 +72,11 @@ void conectar_bateria(Recarregador* rec, void* bateria) {
     rec->ocupado = true;
     rec->bateria_conectada = bateria;
     rec->tempo_atual = 0;
+    // Marcar a bateria como conectada
+    Bateria* bat = (Bateria*)bateria;
+    bat->conectada = true;
+    bat->recarregando = true;
+    bat->tempo_recarga_atual = 0;
     printf("Bateria conectada ao recarregador!\n");
 }
 
