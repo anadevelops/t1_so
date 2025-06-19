@@ -14,13 +14,14 @@ typedef struct {
     Posicao pos;
     bool ativo;
     SDL_Texture* texture;
+    int direcao; // 1=direita, -1=esquerda
 } Helicoptero;
 
 // Funções do helicóptero
 bool carregar_helicoptero(SDL_Renderer* renderer, Helicoptero* heli, const char* caminho_img);
 void liberar_helicoptero(Helicoptero* heli);
 void desenhar_helicoptero(SDL_Renderer* renderer, Helicoptero* heli);
-void mover_helicoptero(Helicoptero* heli, const TeclasMovimento* teclas);
+void mover_helicoptero(Helicoptero* heli, TeclasMovimento* teclas);
 bool helicopero_fora_da_tela(Helicoptero* heli, int largura_tela, int altura_tela);
 
 #endif // HELICOPTERO_H 

@@ -1,5 +1,6 @@
 #include "helicoptero.h"
 #include <stdio.h>
+#include <SDL2/SDL.h>
 
 bool carregar_helicoptero(SDL_Renderer* renderer, Helicoptero* heli, const char* caminho_img) {
     heli->texture = IMG_LoadTexture(renderer, caminho_img);
@@ -24,27 +25,16 @@ void liberar_helicoptero(Helicoptero* heli) {
 }
 
 void desenhar_helicoptero(SDL_Renderer* renderer, Helicoptero* heli) {
-    SDL_Rect heli_rect = { heli->pos.x, heli->pos.y, HELI_W, HELI_H };
-    SDL_RenderCopy(renderer, heli->texture, NULL, &heli_rect);
+    SDL_Rect dst = {heli->pos.x, heli->pos.y, HELI_W, HELI_H};
+    SDL_RendererFlip flip = (heli->direcao == -1) ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+    SDL_RenderCopyEx(renderer, heli->texture, NULL, &dst, 0, NULL, flip);
 }
 
-void mover_helicoptero(Helicoptero* heli, const TeclasMovimento* teclas) {
-    int dx = 0, dy = 0;
-    int velocidade = 2;
-    if (teclas->w) dy -= 1;
-    if (teclas->s) dy += 1;
-    if (teclas->a) dx -= 1;
-    if (teclas->d) dx += 1;
-
-    // Normalização de velocidade
-    if (dx != 0 && dy != 0) {
-        float norm = 0.7071f; // 1/sqrt(2)
-        heli->pos.x += (int)((dx * norm) * velocidade);
-        heli->pos.y += (int)((dy * norm) * velocidade);
-    } else {
-        heli->pos.x += dx * velocidade;
-        heli->pos.y += dy * velocidade;
-    }
+void mover_helicoptero(Helicoptero* heli, TeclasMovimento* teclas) {
+    if (teclas->a) { heli->pos.x -= 5; heli->direcao = -1; }
+    if (teclas->d) { heli->pos.x += 5; heli->direcao = 1; }
+    if (teclas->w) { heli->pos.y -= 5; }
+    if (teclas->s) { heli->pos.y += 5; }
 }
 
 bool helicopero_fora_da_tela(Helicoptero* heli, int largura_tela, int altura_tela) {

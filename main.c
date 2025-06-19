@@ -174,11 +174,13 @@ void desenhar_soldados(SDL_Renderer* renderer) {
 
 // Função para inicializar os soldados
 void inicializar_soldados(void) {
-    int soldado_x_inicial = 3;
+    int soldado_x_inicial = 10;
+    int limite_direita = recarregador.pos.x - SOLDADO_W;
+    int espaco_total = limite_direita - soldado_x_inicial;
+    int espaco_por_soldado = espaco_total / NUM_SOLDADOS;
     int soldado_y = ALTURA - 40 - SOLDADO_H;
-    
     for (int i = 0; i < NUM_SOLDADOS; i++) {
-        soldados[i].pos.x = soldado_x_inicial + i * (SOLDADO_W + SOLDADO_ESPACAMENTO);
+        soldados[i].pos.x = soldado_x_inicial + i * espaco_por_soldado;
         soldados[i].pos.y = soldado_y;
         soldados[i].ativo = true;
         soldados[i].sendo_carregado = false;
@@ -606,13 +608,7 @@ int main() {
                                 helicoptero_carregando_soldado = false;
                                 soldado_em_transporte = -1;
                                 motivo_derrota[0] = '\0';
-                                for (int i = 0; i < NUM_SOLDADOS; i++) {
-                                    soldados[i].ativo = true;
-                                    soldados[i].sendo_carregado = false;
-                                    soldados[i].resgatado = false;
-                                    soldados[i].pos.x = 3 + i * (SOLDADO_W + SOLDADO_ESPACAMENTO);
-                                    soldados[i].pos.y = ALTURA - 40 - SOLDADO_H;
-                                }
+                                inicializar_soldados();
                                 for (int i = 0; i < NUM_BATERIAS; i++) {
                                     baterias[i].id = i;
                                     baterias[i].pos.y = ALTURA - 40 - BAT_H;
