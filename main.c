@@ -42,6 +42,7 @@ SDL_Texture* grama_texture = NULL;
 SDL_Texture* grama_esquerda_texture = NULL;
 SDL_Texture* ponte_texture = NULL;
 SDL_Texture* soldado_texture = NULL;
+SDL_Texture* base_texture = NULL;
 Helicoptero helicoptero = {
     .pos = {.x = 50, .y = ALTURA/2},
     .ativo = true,
@@ -299,6 +300,11 @@ bool init_sdl() {
         printf("Erro ao carregar soldado.png: %s\n", IMG_GetError());
     }
 
+    base_texture = IMG_LoadTexture(renderer, "base.png");
+    if (!base_texture) {
+        printf("Erro ao carregar base.png: %s\n", IMG_GetError());
+    }
+
     // Carregar fonte
     fonte_padrao = TTF_OpenFont("Arial.ttf", 24); // Tente usar uma fonte comum
     if (!fonte_padrao) {
@@ -357,6 +363,7 @@ void cleanup_sdl() {
     if (grama_esquerda_texture) SDL_DestroyTexture(grama_esquerda_texture);
     if (ponte_texture) SDL_DestroyTexture(ponte_texture);
     if (soldado_texture) SDL_DestroyTexture(soldado_texture);
+    if (base_texture) SDL_DestroyTexture(base_texture);
     if (window) SDL_DestroyWindow(window);
     IMG_Quit();
     TTF_Quit();
@@ -404,6 +411,11 @@ void* thread_render(void* arg) {
                 SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
                 SDL_Rect chao_direito = {PONTE_X + PONTE_LARGURA, ALTURA - 40, LARGURA - (PONTE_X + PONTE_LARGURA), 40};
                 SDL_RenderFillRect(renderer, &chao_direito);
+            }
+            // Desenhar base sobre a grama direita
+            if (base_texture) {
+                SDL_Rect base_rect = {LARGURA - 100, ALTURA - 40, 100, 40};
+                SDL_RenderCopy(renderer, base_texture, NULL, &base_rect);
             }
             SDL_Rect ponte = {PONTE_X, ALTURA - 40, PONTE_LARGURA, PONTE_ALTURA};
             if (ponte_texture) {
