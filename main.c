@@ -608,6 +608,7 @@ int main() {
                                 helicoptero_carregando_soldado = false;
                                 soldado_em_transporte = -1;
                                 motivo_derrota[0] = '\0';
+                                memset(&teclas_mov, 0, sizeof(teclas_mov));
                                 inicializar_soldados();
                                 for (int i = 0; i < NUM_BATERIAS; i++) {
                                     baterias[i].id = i;
