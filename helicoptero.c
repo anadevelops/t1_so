@@ -2,6 +2,10 @@
 #include <stdio.h>
 #include <SDL2/SDL.h>
 
+//------------------------------------------
+// FUNÇÕES DE CARREGAMENTO E LIBERAÇÃO DE TEXTURA DO HELICÓPTERO
+//------------------------------------------
+
 bool carregar_helicoptero(SDL_Renderer* renderer, Helicoptero* heli, const char* caminho_img) {
     heli->texture = IMG_LoadTexture(renderer, caminho_img);
     if (!heli->texture) {
@@ -23,6 +27,10 @@ void liberar_helicoptero(Helicoptero* heli) {
         heli->texture = NULL;
     }
 }
+
+//------------------------------------------
+// FUNÇÕES DE MOVIMENTO E DESENHO DO HELICÓPTERO
+//------------------------------------------
 
 void desenhar_helicoptero(SDL_Renderer* renderer, Helicoptero* heli) {
     SDL_Rect dst = {heli->pos.x, heli->pos.y, HELI_W, HELI_H};

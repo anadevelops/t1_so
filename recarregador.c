@@ -5,6 +5,10 @@
 #include "bateria.h"
 #include <SDL2/SDL.h>
 
+//------------------------------------------
+// FUNÇÕES DE ATUALIZAÇÃO, CONEXÃO E DESCONEXÃO DO RECARREGADOR
+//------------------------------------------
+
 bool carregar_recarregador(SDL_Renderer* renderer, Recarregador* rec, const char* caminho_img) {
     if (caminho_img) {
         rec->texture = IMG_LoadTexture(renderer, caminho_img);

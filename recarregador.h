@@ -7,6 +7,9 @@
 #include "tipos.h"
 #include "bateria.h"
 
+//------------------------------------------
+// DEFINIÇÕES E ESTRUTURA DO RECARREGADOR
+//------------------------------------------
 // Estrutura do recarregador
 typedef struct {
     Posicao pos;
@@ -19,6 +22,9 @@ typedef struct {
     Uint32 tempo_ultimo_tick; // Para controle de tempo real
 } Recarregador;
 
+//------------------------------------------
+// FUNÇÕES DO RECARREGADOR (DECLARAÇÕES)
+//------------------------------------------
 // Funções do recarregador
 bool carregar_recarregador(SDL_Renderer* renderer, Recarregador* rec, const char* caminho_img);
 void liberar_recarregador(Recarregador* rec);

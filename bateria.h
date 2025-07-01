@@ -4,9 +4,13 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "tipos.h"  // Já inclui BAT_W, BAT_H e NivelDificuldade
+#include <pthread.h>
 
 #define MAX_FOGUETES 20  // Máximo de foguetes por bateria
 
+//------------------------------------------
+// DEFINIÇÕES E ESTRUTURA DA BATERIA
+//------------------------------------------
 // Estrutura da Bateria
 typedef struct {
     int id;
@@ -27,6 +31,9 @@ typedef struct {
     int tempo_ultimo_disparo;  // Controle de frequência de disparo
 } Bateria;
 
+//------------------------------------------
+// FUNÇÕES DA BATERIA (DECLARAÇÕES)
+//------------------------------------------
 // Funções da Bateria
 bool carregar_bateria(SDL_Renderer* renderer, Bateria* bat, const char* caminho_img);
 void liberar_bateria(Bateria* bat);
@@ -38,7 +45,13 @@ void mover_foguetes(Bateria* bat, int altura_tela);
 void desenhar_foguetes(SDL_Renderer* renderer, Bateria* bat);
 bool verificar_colisao_foguete_helicoptero(Foguete* foguete, Posicao heli_pos, int heli_w, int heli_h);
 void* thread_bateria(void* arg);
+void* thread_foguete(void* arg); // Thread de movimentação do foguete
 
 bool detectar_colisao_bateria_recarregador(Bateria* bat, Posicao rec_pos, int rec_w, int rec_h);
+
+//------------------------------------------
+// SINCRONIZAÇÃO GLOBAL (mutex)
+//------------------------------------------
+extern pthread_mutex_t mutex_foguetes; // Mutex global para acesso ao array de foguetes
 
 #endif // BATERIA_H 

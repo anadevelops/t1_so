@@ -14,6 +14,10 @@
 #include "recarregador.h"
 #include "bateria.h"
 
+//------------------------------------------
+// BATERIA: Definições, inicialização e threads
+//------------------------------------------
+
 // Constantes do jogo
 #define LARGURA 800
 #define ALTURA 600
@@ -82,6 +86,7 @@ pthread_mutex_t mutex_deposito = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_ponte = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_render = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_recarga = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex_foguetes = PTHREAD_MUTEX_INITIALIZER;
 
 // Flags e estruturas de controle
 bool jogo_ativo = true;
@@ -109,6 +114,14 @@ void inicializar_soldados(void);
 void verificar_colisao_helicoptero_soldados(void);
 void soltar_soldado(void);
 void desenhar_menu(SDL_Renderer* renderer);
+
+//------------------------------------------
+// FOGUETE: Desenho e colisão
+//------------------------------------------
+
+//------------------------------------------
+// PONTE: Definições, desenho e mutex
+//------------------------------------------
 
 // Função para desenhar texto na tela
 void desenhar_texto(SDL_Renderer* rend, TTF_Font* font, const char* texto, SDL_Color color, int x, int y) {
@@ -737,6 +750,7 @@ sair:
     pthread_mutex_destroy(&mutex_ponte);
     pthread_mutex_destroy(&mutex_render);
     pthread_cond_destroy(&cond_recarga);
+    pthread_mutex_destroy(&mutex_foguetes);
     printf("Jogo finalizado!\n");
     return 0;
 }

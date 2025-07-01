@@ -1,3 +1,7 @@
+//------------------------------------------
+// DEFINIÇÃO DAS THREADS E ESTRATÉGIAS DE SINCRONIZAÇÃO
+//------------------------------------------
+
 Definição das Threads e Estratégias de Sincronização e Exclusão Mútua
 
 1. Threads Necessárias

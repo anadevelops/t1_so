@@ -9,6 +9,9 @@
 #define HELI_W 60
 #define HELI_H 30
 
+//------------------------------------------
+// DEFINIÇÕES E ESTRUTURA DO HELICÓPTERO
+//------------------------------------------
 // Estrutura do helicóptero
 typedef struct {
     Posicao pos;
@@ -17,6 +20,9 @@ typedef struct {
     int direcao; // 1=direita, -1=esquerda
 } Helicoptero;
 
+//------------------------------------------
+// FUNÇÕES DO HELICÓPTERO (DECLARAÇÕES)
+//------------------------------------------
 // Funções do helicóptero
 bool carregar_helicoptero(SDL_Renderer* renderer, Helicoptero* heli, const char* caminho_img);
 void liberar_helicoptero(Helicoptero* heli);

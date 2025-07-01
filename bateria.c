@@ -9,6 +9,11 @@
 #include <SDL2/SDL.h>
   extern SDL_Texture* foguete_texture;
 extern pthread_mutex_t mutex_ponte;
+extern pthread_mutex_t mutex_foguetes;
+
+//------------------------------------------
+// BATERIA: Funções e lógica principal
+//------------------------------------------
 
 bool carregar_bateria(SDL_Renderer* renderer, Bateria* bat, const char* caminho_img) {
     if (caminho_img) {
@@ -197,34 +202,28 @@ void disparar_foguete(Bateria* bat) {
     if (!bat->ativa || bat->conectada || bat->na_ponte || bat->recarregando || bat->voltando_para_area_original || bat->foguetes_atual <= 0) {
         return; // Não dispara se não estiver ativa, conectada, na ponte, recarregando, voltando, ou sem foguetes
     }
-    
-    // Encontrar um slot livre para o foguete
+
     for (int i = 0; i < MAX_FOGUETES; i++) {
         if (!bat->foguetes[i].ativo) {
-            // Posicionar foguete no centro da bateria
+            pthread_mutex_lock(&mutex_foguetes);
             bat->foguetes[i].pos.x = bat->pos.x + BAT_W / 2 - FOGUETE_W / 2;
             bat->foguetes[i].pos.y = bat->pos.y;
             bat->foguetes[i].ativo = true;
             bat->foguetes[i].velocidade = FOGUETE_VELOCIDADE;
             bat->foguetes[i].direcao = -1; // Para cima
-            
-            bat->foguetes_atual--; // Reduzir contador de foguetes
-            bat->tempo_ultimo_disparo = 0; // Resetar timer
-            break;
-        }
-    }
-}
+            pthread_mutex_unlock(&mutex_foguetes);
 
-void mover_foguetes(Bateria* bat, int altura_tela) {
-    for (int i = 0; i < MAX_FOGUETES; i++) {
-        if (bat->foguetes[i].ativo) {
-            // Mover foguete
-            bat->foguetes[i].pos.y += bat->foguetes[i].velocidade * bat->foguetes[i].direcao;
-            
-            // Verificar se saiu da tela
-            if (bat->foguetes[i].pos.y < 0 || bat->foguetes[i].pos.y > altura_tela) {
-                bat->foguetes[i].ativo = false;
-            }
+            bat->foguetes_atual--;
+            bat->tempo_ultimo_disparo = 0;
+
+            // Criar thread para o foguete
+            pthread_t t_foguete;
+            struct { Foguete* foguete; int altura_tela; } *params = malloc(sizeof(*params));
+            params->foguete = &bat->foguetes[i];
+            params->altura_tela = 600; // ALTURA fixa
+            pthread_create(&t_foguete, NULL, thread_foguete, params);
+            pthread_detach(t_foguete);
+            break;
         }
     }
 }
@@ -263,7 +262,6 @@ void* thread_bateria(void* arg) {
     Bateria *bat = (Bateria *)arg;
     while (bat->ativa && jogo_ativo) {
         mover_bateria(bat, LARGURA);
-        mover_foguetes(bat, ALTURA);
         bat->tempo_ultimo_disparo++;
         if (bat->foguetes_atual > 0 && bat->tempo_ultimo_disparo > bat->tempo_disparo_personalizado) {
             disparar_foguete(bat);
@@ -279,4 +277,36 @@ bool detectar_colisao_bateria_recarregador(Bateria* bat, Posicao rec_pos, int re
             bat->pos.x + BAT_W > rec_pos.x &&
             bat->pos.y < rec_pos.y + rec_h &&
             bat->pos.y + BAT_H > rec_pos.y);
-} 
+}
+
+//------------------------------------------
+// FOGUETE: Funções, threads e lógica
+//------------------------------------------
+
+void* thread_foguete(void* arg) {
+    struct {
+        Foguete* foguete;
+        int altura_tela;
+    } *params = arg;
+    Foguete* foguete = params->foguete;
+    int altura_tela = params->altura_tela;
+    free(params);
+
+    while (foguete->ativo) {
+        pthread_mutex_lock(&mutex_foguetes);
+        foguete->pos.y += foguete->velocidade * foguete->direcao;
+        // Verificar se saiu da tela
+        if (foguete->pos.y < 0 || foguete->pos.y > altura_tela) {
+            foguete->ativo = false;
+        }
+        pthread_mutex_unlock(&mutex_foguetes);
+        usleep(16000); // 16ms para 60fps
+    }
+    return NULL;
+}
+
+//------------------------------------------
+// PONTE: Controle de travessia e mutex
+//------------------------------------------
+
+// ... inserir antes do código de ponte em mover_bateria ... 
