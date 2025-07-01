@@ -87,8 +87,8 @@ void atualizar_recarregador(Recarregador* rec) {
             bat->recarregando = false;
             bat->voltando_para_area_original = true;
             bat->foguetes_atual = bat->foguetes_max;
-            // Mover a bateria para o mínimo possível à direita do recarregador, considerando BAT_W
-            bat->pos.x = rec->pos.x + REC_W - BAT_W + 1;
+            // Mover a bateria para uma posição segura fora do recarregador
+            bat->pos.x = rec->pos.x + REC_W + 5; // 5 pixels à direita do recarregador
             rec->ocupado = false;
             rec->bateria_conectada = NULL;
             rec->tempo_atual = 0;

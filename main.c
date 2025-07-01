@@ -673,6 +673,10 @@ int main() {
                                     inicializar_bateria(&baterias[i], nivel_dificuldade_global);
                                 }
                                 inicializar_recarregador(&recarregador, nivel_dificuldade_global);
+                                // Resetar estado do recarregador para garantir início limpo
+                                recarregador.ocupado = false;
+                                recarregador.bateria_conectada = NULL;
+                                recarregador.tempo_atual = 0;
                                 jogo_ativo = true;
                                 pthread_create(&t_heli, NULL, thread_helicoptero, NULL);
                                 pthread_create(&t_rec, NULL, thread_recarregador, NULL);

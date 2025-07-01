@@ -133,10 +133,11 @@ void mover_bateria(Bateria* bat, int largura_tela) {
             bat->direcao = 1;
         }
         if (bat->pos.x <= recarregador_x + 50 && bat->pos.x + BAT_W >= recarregador_x) {
-            bat->recarregando = true;
+            // bat->recarregando = true;
             printf("Bateria %d chegou ao recarregador! Pos: %d, Rec: %d\n", bat->id, bat->pos.x, recarregador_x);
             debug_sem_municao = false;
-            return; // Parar de mover
+            // return; 
+            //bat->velocidade = 0;// Parar de mover
         }
     }
     
