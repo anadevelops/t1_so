@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
-#include "tipos.h"
+#include "headers/tipos.h"
 
 #define HELI_W 60
 #define HELI_H 30

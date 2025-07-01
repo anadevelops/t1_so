@@ -9,13 +9,13 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
-#include "tipos.h"
-#include "helicoptero.h"
-#include "recarregador.h"
-#include "bateria.h"
+#include "headers/tipos.h"
+#include "headers/helicoptero.h"
+#include "headers/recarregador.h"
+#include "headers/bateria.h"
 
 //------------------------------------------
-// BATERIA: Definições, inicialização e threads
+// DEFINIÇÕES GLOBAIS E ESTRUTURAS PRINCIPAIS
 //------------------------------------------
 
 // Constantes do jogo
@@ -114,14 +114,6 @@ void inicializar_soldados(void);
 void verificar_colisao_helicoptero_soldados(void);
 void soltar_soldado(void);
 void desenhar_menu(SDL_Renderer* renderer);
-
-//------------------------------------------
-// FOGUETE: Desenho e colisão
-//------------------------------------------
-
-//------------------------------------------
-// PONTE: Definições, desenho e mutex
-//------------------------------------------
 
 // Função para desenhar texto na tela
 void desenhar_texto(SDL_Renderer* rend, TTF_Font* font, const char* texto, SDL_Color color, int x, int y) {
@@ -283,36 +275,36 @@ bool init_sdl() {
         return false;
     }
 
-    fundo_texture = IMG_LoadTexture(renderer, "fundo.png");
+    fundo_texture = IMG_LoadTexture(renderer, "assets/fundo.png");
     if (!fundo_texture) {
         printf("Erro ao carregar fundo.png: %s\n", IMG_GetError());
     }
 
-    foguete_texture = IMG_LoadTexture(renderer, "foguete.png");
+    foguete_texture = IMG_LoadTexture(renderer, "assets/foguete.png");
     if (!foguete_texture) {
         printf("Erro ao carregar foguete.png: %s\n", IMG_GetError());
     }
 
-    grama_texture = IMG_LoadTexture(renderer, "grama_direita.png");
+    grama_texture = IMG_LoadTexture(renderer, "assets/grama_direita.png");
     if (!grama_texture) {
         printf("Erro ao carregar grama_direita.png: %s\n", IMG_GetError());
     }
-    grama_esquerda_texture = IMG_LoadTexture(renderer, "grama_esquerda.png");
+    grama_esquerda_texture = IMG_LoadTexture(renderer, "assets/grama_esquerda.png");
     if (!grama_esquerda_texture) {
         printf("Erro ao carregar grama_esquerda.png: %s\n", IMG_GetError());
     }
 
-    ponte_texture = IMG_LoadTexture(renderer, "ponte.png");
+    ponte_texture = IMG_LoadTexture(renderer, "assets/ponte.png");
     if (!ponte_texture) {
         printf("Erro ao carregar ponte.png: %s\n", IMG_GetError());
     }
 
-    soldado_texture = IMG_LoadTexture(renderer, "soldado.png");
+    soldado_texture = IMG_LoadTexture(renderer, "assets/soldado.png");
     if (!soldado_texture) {
         printf("Erro ao carregar soldado.png: %s\n", IMG_GetError());
     }
 
-    base_texture = IMG_LoadTexture(renderer, "base.png");
+    base_texture = IMG_LoadTexture(renderer, "assets/base.png");
     if (!base_texture) {
         printf("Erro ao carregar base.png: %s\n", IMG_GetError());
     }
@@ -321,17 +313,17 @@ bool init_sdl() {
     fonte_padrao = TTF_OpenFont("Arial.ttf", 24); // Tente usar uma fonte comum
     if (!fonte_padrao) {
         printf("Erro ao carregar fonte Arial.ttf: %s\nTentando DejaVuSans.ttf...\n", TTF_GetError());
-        fonte_padrao = TTF_OpenFont("DejaVuSans.ttf", 24);
+        fonte_padrao = TTF_OpenFont("assets/DejaVuSans.ttf", 24);
         if (!fonte_padrao) {
             printf("Erro ao carregar fonte DejaVuSans.ttf: %s\nTextos não serão exibidos!\n", TTF_GetError());
         }
     }
 
     // Carregar textura do helicóptero usando o módulo
-    carregar_helicoptero(renderer, &helicoptero, "helicoptero.png");
+    carregar_helicoptero(renderer, &helicoptero, "assets/helicoptero.png");
     
     // Carregar recarregador (sem imagem, será um retângulo vermelho)
-    carregar_recarregador(renderer, &recarregador, "recarregador.png");
+    carregar_recarregador(renderer, &recarregador, "assets/recarregador.png");
     inicializar_recarregador(&recarregador, nivel_dificuldade_global);  // Usar nível global
     
     // Inicializar baterias
@@ -347,7 +339,7 @@ bool init_sdl() {
         }
         baterias[i].pos.y = ALTURA - 40 - BAT_H;  // Posicionadas em cima do chão
         baterias[i].id = i;  // Definir ID da bateria
-        carregar_bateria(renderer, &baterias[i], "bateria.png");
+        carregar_bateria(renderer, &baterias[i], "assets/bateria.png");
         inicializar_bateria(&baterias[i], nivel_dificuldade_global);  // Usar nível global
     }
     

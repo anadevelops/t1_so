@@ -1,9 +1,9 @@
-#include "helicoptero.h"
+#include "headers/helicoptero.h"
 #include <stdio.h>
 #include <SDL2/SDL.h>
 
 //------------------------------------------
-// FUNÇÕES DE CARREGAMENTO E LIBERAÇÃO DE TEXTURA DO HELICÓPTERO
+// HELICÓPTERO: FUNÇÕES DE CARREGAMENTO E LIBERAÇÃO DE TEXTURA
 //------------------------------------------
 
 bool carregar_helicoptero(SDL_Renderer* renderer, Helicoptero* heli, const char* caminho_img) {
@@ -29,7 +29,7 @@ void liberar_helicoptero(Helicoptero* heli) {
 }
 
 //------------------------------------------
-// FUNÇÕES DE MOVIMENTO E DESENHO DO HELICÓPTERO
+// HELICÓPTERO: FUNÇÕES DE MOVIMENTO E DESENHO
 //------------------------------------------
 
 void desenhar_helicoptero(SDL_Renderer* renderer, Helicoptero* heli) {

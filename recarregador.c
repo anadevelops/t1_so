@@ -1,8 +1,8 @@
-#include "recarregador.h"
-#include "tipos.h" // Para REC_W e REC_H
+#include "headers/recarregador.h"
+#include "headers/tipos.h" // Para REC_W e REC_H
 #include <stdio.h>
 #include <SDL2/SDL_image.h> // Para IMG_LoadTexture
-#include "bateria.h"
+#include "headers/bateria.h"
 #include <SDL2/SDL.h>
 #include <pthread.h>
 

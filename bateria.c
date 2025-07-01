@@ -1,5 +1,5 @@
-#include "bateria.h"
-#include "tipos.h" // Para BAT_W e BAT_H
+#include "headers/bateria.h"
+#include "headers/tipos.h" // Para BAT_W e BAT_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL2/SDL_image.h> // Para IMG_LoadTexture
@@ -12,7 +12,7 @@ extern pthread_mutex_t mutex_ponte;
 extern pthread_mutex_t mutex_foguetes;
 
 //------------------------------------------
-// BATERIA: Funções e lógica principal
+// BATERIA: FUNÇÕES E LÓGICA PRINCIPAL
 //------------------------------------------
 
 bool carregar_bateria(SDL_Renderer* renderer, Bateria* bat, const char* caminho_img) {

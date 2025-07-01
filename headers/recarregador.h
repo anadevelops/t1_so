@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
-#include "tipos.h"
-#include "bateria.h"
+#include "headers/tipos.h"
+#include "headers/bateria.h"
 
 //------------------------------------------
 // DEFINIÇÕES E ESTRUTURA DO RECARREGADOR
