@@ -89,7 +89,6 @@ TeclasMovimento teclas_mov = {0};
 char motivo_derrota[128] = "";
 int soldados_resgatados = 0;
 NivelDificuldade nivel_dificuldade_global = FACIL;  // Nível de dificuldade global do jogo
-int bateria_atravessando_ponte = -1;  // ID da bateria atravessando a ponte (-1 = nenhuma)
 
 // Adicionar enum para estados do jogo
 typedef enum { MENU, JOGO } GameState;

@@ -8,6 +8,7 @@
 #include <pthread.h> // Para pthread_mutex_t
 #include <SDL2/SDL.h>
   extern SDL_Texture* foguete_texture;
+extern pthread_mutex_t mutex_ponte;
 
 bool carregar_bateria(SDL_Renderer* renderer, Bateria* bat, const char* caminho_img) {
     if (caminho_img) {
@@ -150,9 +151,6 @@ void mover_bateria(Bateria* bat, int largura_tela) {
     int ponte_inicio = 220;  // Posição X da ponte (movida 50px para direita)
     int ponte_fim = 370;     // Fim da ponte (ponte_inicio + PONTE_LARGURA)
     
-    // Declaração externa da variável global
-    extern int bateria_atravessando_ponte;
-    
     // Verificar limites apenas se a bateria tem munição ou está voltando
     if (bat->foguetes_atual > 0 || bat->voltando_para_area_original) {
         if (bat->pos.x <= limite_esquerdo) {
@@ -180,30 +178,18 @@ void mover_bateria(Bateria* bat, int largura_tela) {
             }
             bat->direcao *= -1;
         } else {
-            // Bateria sem munição ou voltando - pode atravessar se nenhuma outra estiver atravessando
-            if (bateria_atravessando_ponte == -1 || bateria_atravessando_ponte == bat->id) {
-                // Nenhuma bateria atravessando ou esta já está atravessando
-                if (bateria_atravessando_ponte == -1) {
-                    bateria_atravessando_ponte = bat->id;
-                }
+            // Bateria sem munição ou voltando - pode atravessar se ponte estiver livre
+            if (!bat->na_ponte) {
+                pthread_mutex_lock(&mutex_ponte);
                 bat->na_ponte = true;
                 printf("Bateria %d atravessando a ponte\n", bat->id);
-            } else {
-                // Outra bateria está atravessando, esta deve esperar
-                if (bat->direcao == 1) {
-                    bat->pos.x = ponte_inicio - BAT_W;
-                } else {
-                    bat->pos.x = ponte_fim;
-                }
             }
         }
     } else if (bat->na_ponte && (bat->pos.x < ponte_inicio || bat->pos.x >= ponte_fim)) {
         // Bateria saiu da ponte
         bat->na_ponte = false;
-        if (bateria_atravessando_ponte == bat->id) {
-            bateria_atravessando_ponte = -1;
-            printf("Bateria %d saiu da ponte\n", bat->id);
-        }
+        pthread_mutex_unlock(&mutex_ponte);
+        printf("Bateria %d saiu da ponte\n", bat->id);
     }
 }
 
