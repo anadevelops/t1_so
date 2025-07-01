@@ -11,9 +11,10 @@
 extern pthread_mutex_t mutex_ponte;
 extern pthread_mutex_t mutex_foguetes;
 
-//------------------------------------------
-// BATERIA: FUNÇÕES E LÓGICA PRINCIPAL
-//------------------------------------------
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+// FUNÇÕES E LÓGICA PRINCIPAL
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 
 bool carregar_bateria(SDL_Renderer* renderer, Bateria* bat, const char* caminho_img) {
     if (caminho_img) {
@@ -280,9 +281,9 @@ bool detectar_colisao_bateria_recarregador(Bateria* bat, Posicao rec_pos, int re
             bat->pos.y + BAT_H > rec_pos.y);
 }
 
-//------------------------------------------
-// FOGUETE: Funções, threads e lógica
-//------------------------------------------
+//----------------------------------------------------------------------------------------------
+// Funções, threads e lógica
+//----------------------------------------------------------------------------------------------
 
 void* thread_foguete(void* arg) {
     struct {
@@ -305,9 +306,3 @@ void* thread_foguete(void* arg) {
     }
     return NULL;
 }
-
-//------------------------------------------
-// PONTE: Controle de travessia e mutex
-//------------------------------------------
-
-// ... inserir antes do código de ponte em mover_bateria ... 

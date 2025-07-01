@@ -6,12 +6,14 @@
 #include <SDL2/SDL.h>
 #include <pthread.h>
 
+
 // Adiciona o extern para o mutex do recarregador
 extern pthread_mutex_t mutex_recarregador;
 
-//------------------------------------------
+
+//----------------------------------------------------------------------------------------------
 // FUNÇÕES DE ATUALIZAÇÃO, CONEXÃO E DESCONEXÃO DO RECARREGADOR
-//------------------------------------------
+//----------------------------------------------------------------------------------------------
 
 bool carregar_recarregador(SDL_Renderer* renderer, Recarregador* rec, const char* caminho_img) {
     if (caminho_img) {

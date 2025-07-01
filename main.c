@@ -14,9 +14,10 @@
 #include "headers/recarregador.h"
 #include "headers/bateria.h"
 
-//------------------------------------------
+
+//----------------------------------------------------------------------------------------------
 // DEFINIÇÕES GLOBAIS E ESTRUTURAS PRINCIPAIS
-//------------------------------------------
+//----------------------------------------------------------------------------------------------
 
 // Constantes do jogo
 #define LARGURA 800
@@ -114,6 +115,11 @@ void inicializar_soldados(void);
 void verificar_colisao_helicoptero_soldados(void);
 void soltar_soldado(void);
 void desenhar_menu(SDL_Renderer* renderer);
+
+
+//----------------------------------------------------------------------------------------------
+// INICIALIZAÇÃO DE RECURSOS (SDL, TEXTURAS, FONTES, ESTRUTURAS)
+//----------------------------------------------------------------------------------------------
 
 // Função para desenhar texto na tela
 void desenhar_texto(SDL_Renderer* rend, TTF_Font* font, const char* texto, SDL_Color color, int x, int y) {
@@ -374,6 +380,11 @@ void cleanup_sdl() {
     SDL_Quit();
 }
 
+
+//----------------------------------------------------------------------------------------------
+// GERENCIAMENTO DE THREADS
+//----------------------------------------------------------------------------------------------
+
 // Função da Thread do helicóptero
 void* thread_helicoptero(void* arg) {
     while (jogo_ativo) {
@@ -549,6 +560,11 @@ void alterar_nivel_dificuldade(NivelDificuldade novo_nivel) {
     printf("Nível de dificuldade alterado para: %d\n", novo_nivel);
 }
 
+
+//----------------------------------------------------------------------------------------------
+// LOOP PRINCIPAL E CONTROLE DE ESTADOS (MENU/JOGO)
+//----------------------------------------------------------------------------------------------
+
 // Adicionar função para desenhar o menu
 void desenhar_menu(SDL_Renderer* renderer) {
     SDL_Color cor_branca = {255, 255, 255, 255};
@@ -596,6 +612,11 @@ void desenhar_menu(SDL_Renderer* renderer) {
         desenhar_texto(renderer, fonte_padrao, scorebuf, cor_branca, 10, ALTURA - sh - 10);
     }
 }
+
+
+//----------------------------------------------------------------------------------------------
+// LÓGICA DE JOGO (MOVIMENTAÇÃO, COLISÕES, RESGATE)
+//----------------------------------------------------------------------------------------------
 
 // Atualizar main loop para lidar com o menu
 int main() {

@@ -8,10 +8,11 @@
 
 #define MAX_FOGUETES 20  // Máximo de foguetes por bateria
 
-//------------------------------------------
+
+//----------------------------------------------------------------------------------------------
 // ESTRUTURAS E CONSTANTES DA BATERIA
-//------------------------------------------
-// Estrutura da Bateria
+//----------------------------------------------------------------------------------------------
+
 typedef struct {
     int id;
     Posicao pos;
@@ -31,10 +32,11 @@ typedef struct {
     int tempo_ultimo_disparo;  // Controle de frequência de disparo
 } Bateria;
 
-//------------------------------------------
+
+//----------------------------------------------------------------------------------------------
 // DECLARAÇÃO DAS FUNÇÕES DA BATERIA
-//------------------------------------------
-// Funções da Bateria
+//----------------------------------------------------------------------------------------------
+
 bool carregar_bateria(SDL_Renderer* renderer, Bateria* bat, const char* caminho_img);
 void liberar_bateria(Bateria* bat);
 void inicializar_bateria(Bateria* bat, NivelDificuldade nivel);
@@ -49,9 +51,11 @@ void* thread_foguete(void* arg); // Thread de movimentação do foguete
 
 bool detectar_colisao_bateria_recarregador(Bateria* bat, Posicao rec_pos, int rec_w, int rec_h);
 
-//------------------------------------------
+
+//----------------------------------------------------------------------------------------------
 // SINCRONIZAÇÃO GLOBAL
-//------------------------------------------
+//----------------------------------------------------------------------------------------------
+
 extern pthread_mutex_t mutex_foguetes; // Mutex global para acesso ao array de foguetes
 
 #endif // BATERIA_H 
