@@ -82,7 +82,7 @@ bool helicoptero_carregando_soldado = false;
 int soldado_em_transporte = -1;  // ID do soldado sendo transportado (-1 = nenhum)
 
 // Definição dos mutexes e variáveis de condição
-pthread_mutex_t mutex_deposito = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_recarregador = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_ponte = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_render = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_recarga = PTHREAD_COND_INITIALIZER;
@@ -686,6 +686,10 @@ int main() {
                                     inicializar_bateria(&baterias[i], nivel_dificuldade_global);
                                 }
                                 inicializar_recarregador(&recarregador, nivel_dificuldade_global);
+                                // Resetar estado do recarregador para garantir início limpo
+                                recarregador.ocupado = false;
+                                recarregador.bateria_conectada = NULL;
+                                recarregador.tempo_atual = 0;
                                 jogo_ativo = true;
                                 pthread_create(&t_heli, NULL, thread_helicoptero, NULL);
                                 pthread_create(&t_rec, NULL, thread_recarregador, NULL);
@@ -746,7 +750,7 @@ int main() {
 sair:
     printf("Limpando recursos...\n");
     cleanup_sdl();
-    pthread_mutex_destroy(&mutex_deposito);
+    pthread_mutex_destroy(&mutex_recarregador);
     pthread_mutex_destroy(&mutex_ponte);
     pthread_mutex_destroy(&mutex_render);
     pthread_cond_destroy(&cond_recarga);

@@ -4,6 +4,10 @@
 #include <SDL2/SDL_image.h> // Para IMG_LoadTexture
 #include "bateria.h"
 #include <SDL2/SDL.h>
+#include <pthread.h>
+
+// Adiciona o extern para o mutex do recarregador
+extern pthread_mutex_t mutex_recarregador;
 
 //------------------------------------------
 // FUNÇÕES DE ATUALIZAÇÃO, CONEXÃO E DESCONEXÃO DO RECARREGADOR
@@ -87,8 +91,8 @@ void atualizar_recarregador(Recarregador* rec) {
             bat->recarregando = false;
             bat->voltando_para_area_original = true;
             bat->foguetes_atual = bat->foguetes_max;
-            // Mover a bateria para o mínimo possível à direita do recarregador, considerando BAT_W
-            bat->pos.x = rec->pos.x + REC_W - BAT_W + 1;
+            // Mover a bateria para uma posição segura fora do recarregador
+            bat->pos.x = rec->pos.x + REC_W + 5; // 5 pixels à direita do recarregador
             rec->ocupado = false;
             rec->bateria_conectada = NULL;
             rec->tempo_atual = 0;
@@ -97,13 +101,16 @@ void atualizar_recarregador(Recarregador* rec) {
 }
 
 void conectar_bateria(Recarregador* rec, void* bateria) {
+    pthread_mutex_lock(&mutex_recarregador); // Protege início da seção crítica
     Bateria* bat = (Bateria*)bateria;
     if (!bat->ativa || bat->conectada || bat->recarregando) {
         printf("[DEBUG] Tentativa de conectar bateria %d inválida ou já conectada\n", bat->id);
+        pthread_mutex_unlock(&mutex_recarregador);
         return;
     }
     if (rec->ocupado) {
         printf("[DEBUG] Recarregador já está ocupado\n");
+        pthread_mutex_unlock(&mutex_recarregador);
         return;
     }
     rec->ocupado = true;
@@ -113,21 +120,22 @@ void conectar_bateria(Recarregador* rec, void* bateria) {
     bat->conectada = true;
     bat->recarregando = true;
     printf("[DEBUG] Bateria %d conectada ao recarregador!\n", bat->id);
+    pthread_mutex_unlock(&mutex_recarregador); // Libera ao final
 }
 
 void desconectar_bateria(Recarregador* rec) {
+    pthread_mutex_lock(&mutex_recarregador); // Protege início da seção crítica
     if (rec->ocupado && rec->bateria_conectada) {
         Bateria* bat = (Bateria*)rec->bateria_conectada;
         printf("Forçando desconexão da bateria %d\n", bat->id);
-        
         // Resetar estado da bateria
         bat->conectada = false;
         bat->recarregando = false;
         bat->voltando_para_area_original = true;
         bat->foguetes_atual = bat->foguetes_max;
     }
-    
     rec->ocupado = false;
     rec->bateria_conectada = NULL;
     rec->tempo_atual = 0;
+    pthread_mutex_unlock(&mutex_recarregador); // Libera ao final
 }
