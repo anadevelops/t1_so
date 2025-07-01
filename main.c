@@ -78,7 +78,7 @@ bool helicoptero_carregando_soldado = false;
 int soldado_em_transporte = -1;  // ID do soldado sendo transportado (-1 = nenhum)
 
 // Definição dos mutexes e variáveis de condição
-pthread_mutex_t mutex_deposito = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_recarregador = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_ponte = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_render = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_recarga = PTHREAD_COND_INITIALIZER;
@@ -733,7 +733,7 @@ int main() {
 sair:
     printf("Limpando recursos...\n");
     cleanup_sdl();
-    pthread_mutex_destroy(&mutex_deposito);
+    pthread_mutex_destroy(&mutex_recarregador);
     pthread_mutex_destroy(&mutex_ponte);
     pthread_mutex_destroy(&mutex_render);
     pthread_cond_destroy(&cond_recarga);
