@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <SDL2/SDL_image.h> // Para IMG_LoadTexture
 #include "bateria.h"
+#include <SDL2/SDL.h>
 
 bool carregar_recarregador(SDL_Renderer* renderer, Recarregador* rec, const char* caminho_img) {
     if (caminho_img) {
@@ -41,47 +42,88 @@ void desenhar_recarregador(SDL_Renderer* renderer, Recarregador* rec) {
 void inicializar_recarregador(Recarregador* rec, NivelDificuldade nivel) {
     rec->ocupado = false;
     rec->bateria_conectada = NULL;
-    // Definir tempo de recarga baseado no nível
+    // Definir tempo de recarga baseado no nível (em milissegundos)
     switch (nivel) {
-        case FACIL: rec->tempo_recarga = 500; break; // 0.5s
-        case MEDIO: rec->tempo_recarga = 300; break; // 0.3s
-        case DIFICIL: rec->tempo_recarga = 100; break; // 0.1s
+        case FACIL: rec->tempo_recarga = 1000; break;   // 1.0s
+        case MEDIO: rec->tempo_recarga = 600; break;    // 0.6s
+        case DIFICIL: rec->tempo_recarga = 200; break;  // 0.2s
     }
     rec->tempo_atual = 0;
+    rec->tempo_ultimo_tick = SDL_GetTicks();
 }
 
 void atualizar_recarregador(Recarregador* rec) {
     if (rec->ocupado && rec->bateria_conectada) {
-        rec->tempo_atual += 100; // Incrementa tempo a cada 100ms de verificação (do thread_recarregador)
+        Uint32 now = SDL_GetTicks();
+        Uint32 elapsed = now - rec->tempo_ultimo_tick;
+        rec->tempo_ultimo_tick = now;
+        rec->tempo_atual += elapsed;
         Bateria* bat = (Bateria*)rec->bateria_conectada;
+        
+        // Debug: imprimir progresso a cada 200ms
+        if (rec->tempo_atual % 200 < elapsed) {
+            printf("[DEBUG] Recarregador: Bateria %d - Progresso: %d/%d ms (%.1f%%)\n", 
+                   bat->id, rec->tempo_atual, rec->tempo_recarga, 
+                   (float)rec->tempo_atual / rec->tempo_recarga * 100.0f);
+        }
+        
+        // Verificar se a bateria ainda está válida e conectada
+        if (!bat->ativa || !bat->recarregando) {
+            printf("[DEBUG] Recarregador: Bateria %d inválida ou não está mais recarregando, liberando\n", bat->id);
+            rec->ocupado = false;
+            rec->bateria_conectada = NULL;
+            rec->tempo_atual = 0;
+            return;
+        }
+        
         if (rec->tempo_atual >= rec->tempo_recarga) {
             // Recarga completa
+            printf("[DEBUG] Recarregador: Bateria %d recarregada! Liberando após %d ms\n", bat->id, rec->tempo_recarga);
             bat->conectada = false;
             bat->recarregando = false;
             bat->voltando_para_area_original = true;
             bat->foguetes_atual = bat->foguetes_max;
+            // Mover a bateria para o mínimo possível à direita do recarregador, considerando BAT_W
+            bat->pos.x = rec->pos.x + REC_W - BAT_W + 1;
             rec->ocupado = false;
             rec->bateria_conectada = NULL;
             rec->tempo_atual = 0;
-            printf("Recarregador liberado!\n");
         }
     }
 }
 
 void conectar_bateria(Recarregador* rec, void* bateria) {
+    Bateria* bat = (Bateria*)bateria;
+    if (!bat->ativa || bat->conectada || bat->recarregando) {
+        printf("[DEBUG] Tentativa de conectar bateria %d inválida ou já conectada\n", bat->id);
+        return;
+    }
+    if (rec->ocupado) {
+        printf("[DEBUG] Recarregador já está ocupado\n");
+        return;
+    }
     rec->ocupado = true;
     rec->bateria_conectada = bateria;
     rec->tempo_atual = 0;
-    // Marcar a bateria como conectada
-    Bateria* bat = (Bateria*)bateria;
+    rec->tempo_ultimo_tick = SDL_GetTicks();
     bat->conectada = true;
     bat->recarregando = true;
-    bat->tempo_recarga_atual = 0;
-    printf("Bateria conectada ao recarregador!\n");
+    printf("[DEBUG] Bateria %d conectada ao recarregador!\n", bat->id);
 }
 
-// void desconectar_bateria(Recarregador* rec) {
-//     rec->ocupado = false;
-//     rec->bateria_conectada = NULL;
-//     rec->tempo_atual = 0;
-// }
+void desconectar_bateria(Recarregador* rec) {
+    if (rec->ocupado && rec->bateria_conectada) {
+        Bateria* bat = (Bateria*)rec->bateria_conectada;
+        printf("Forçando desconexão da bateria %d\n", bat->id);
+        
+        // Resetar estado da bateria
+        bat->conectada = false;
+        bat->recarregando = false;
+        bat->voltando_para_area_original = true;
+        bat->foguetes_atual = bat->foguetes_max;
+    }
+    
+    rec->ocupado = false;
+    rec->bateria_conectada = NULL;
+    rec->tempo_atual = 0;
+}

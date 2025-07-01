@@ -29,7 +29,7 @@
 
 // Constantes da ponte
 #define PONTE_LARGURA 150  // Aumentada de 100 para 150 (50% mais larga)
-#define PONTE_X (100 + REC_W + 20)  // Posicionada logo à direita do recarregador
+#define PONTE_X (150 + REC_W + 20)  // Posicionada logo à direita do recarregador (movida 50px para direita)
 #define PONTE_ALTURA 36  // Altura proporcional à imagem ponte.png
 
 // Variáveis globais do jogo
@@ -330,7 +330,7 @@ bool init_sdl() {
             baterias[i].direcao = 1;  // Andando para direita
         } else {
             // Segunda bateria: exatamente à direita da ponte
-            baterias[i].pos.x = 320;  // Exatamente no fim da ponte (lado direito)
+            baterias[i].pos.x = 370;  // Exatamente no fim da ponte (lado direito) - atualizado
             baterias[i].direcao = -1;  // Andando para esquerda
         }
         baterias[i].pos.y = ALTURA - 40 - BAT_H;  // Posicionadas em cima do chão
@@ -455,8 +455,36 @@ void* thread_render(void* arg) {
 
 // Função da Thread do recarregador
 void* thread_recarregador(void* arg) {
+    int contador_verificacao = 0;
     while (jogo_ativo) {
         atualizar_recarregador(&recarregador);
+        
+        // Verificação periódica para detectar baterias travadas (a cada 100 frames ~ 1.6 segundos)
+        contador_verificacao++;
+        if (contador_verificacao >= 100) {
+            contador_verificacao = 0;
+            
+            // Verificar se há baterias que estão recarregando mas não estão conectadas ao recarregador
+            for (int i = 0; i < NUM_BATERIAS; i++) {
+                if (baterias[i].ativa && baterias[i].recarregando && !baterias[i].conectada) {
+                    printf("Bateria %d detectada como travada (recarregando mas não conectada), forçando liberação\n", i);
+                    baterias[i].conectada = false;
+                    baterias[i].recarregando = false;
+                    baterias[i].voltando_para_area_original = true;
+                    baterias[i].foguetes_atual = baterias[i].foguetes_max;
+                }
+            }
+            
+            // Verificar se o recarregador está ocupado mas a bateria não está mais recarregando
+            if (recarregador.ocupado && recarregador.bateria_conectada) {
+                Bateria* bat = (Bateria*)recarregador.bateria_conectada;
+                if (!bat->recarregando || !bat->ativa) {
+                    printf("Recarregador detectado como travado, forçando liberação\n");
+                    desconectar_bateria(&recarregador);
+                }
+            }
+        }
+        
         // Detectar colisão com helicóptero
         if (helicoptero.pos.x < recarregador.pos.x + REC_W &&
             helicoptero.pos.x + HELI_W > recarregador.pos.x &&
@@ -468,12 +496,14 @@ void* thread_recarregador(void* arg) {
         }
         // Verificar colisões com baterias
         for (int i = 0; i < NUM_BATERIAS; i++) {
-            if (baterias[i].ativa && !baterias[i].conectada)
+            if (baterias[i].ativa && !baterias[i].conectada && !baterias[i].recarregando) {
                 if (detectar_colisao_bateria_recarregador(&baterias[i], recarregador.pos, REC_W, REC_H)) {
                     if (!recarregador.ocupado) {
                         conectar_bateria(&recarregador, &baterias[i]);
+                        printf("Bateria %d conectada ao recarregador\n", i);
                     }
                 }
+            }
             // Colisão helicóptero-bateria
             if (helicoptero.pos.x < baterias[i].pos.x + BAT_W &&
                 helicoptero.pos.x + HELI_W > baterias[i].pos.x &&
@@ -629,7 +659,6 @@ int main() {
                                     baterias[i].na_ponte = false;
                                     baterias[i].recarregando = false;
                                     baterias[i].voltando_para_area_original = false;
-                                    baterias[i].tempo_recarga_atual = 0;
                                     baterias[i].nivel = nivel_dificuldade_global;
                                     baterias[i].ativa = true;
                                     baterias[i].tempo_ultimo_disparo = 0;
@@ -641,7 +670,7 @@ int main() {
                                     if (i == 0)
                                         baterias[i].pos.x = 600 - BAT_W - 20;
                                     else
-                                        baterias[i].pos.x = 320;
+                                        baterias[i].pos.x = 370;  // Atualizado para a nova posição da ponte
                                     inicializar_bateria(&baterias[i], nivel_dificuldade_global);
                                 }
                                 inicializar_recarregador(&recarregador, nivel_dificuldade_global);

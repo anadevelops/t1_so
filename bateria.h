@@ -18,8 +18,6 @@ typedef struct {
     bool conectada;  // Se está conectada ao recarregador
     bool na_ponte;   // Se está atravessando a ponte
     bool recarregando;  // Se está sendo recarregada
-    int tempo_recarga_atual;  // Tempo atual de recarga
-    int tempo_recarga_total;  // Tempo total necessário para recarga
     bool voltando_para_area_original;  // Se está voltando para sua área original
     SDL_Texture* texture;
     int velocidade;  // Velocidade de movimento

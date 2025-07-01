@@ -42,15 +42,7 @@ void inicializar_bateria(Bateria* bat, NivelDificuldade nivel) {
     bat->na_ponte = false;
     bat->recarregando = false;
     bat->voltando_para_area_original = false;
-    bat->tempo_recarga_atual = 0;
     bat->nivel = nivel;
-    
-    // Definir tempo de recarga baseado no nível (em frames, considerando 60 FPS)
-    switch (nivel) {
-        case FACIL: bat->tempo_recarga_total = 30; break;   // 0.5s (30 frames a 60 FPS)
-        case MEDIO: bat->tempo_recarga_total = 18; break;   // 0.3s (18 frames a 60 FPS)
-        case DIFICIL: bat->tempo_recarga_total = 6; break;  // 0.1s (6 frames a 60 FPS)
-    }
     
     // Inicializar movimento com velocidade aleatória (±20% da velocidade base)
     float velocidade_base = 2.0f;  // Reduzida pela metade
@@ -104,52 +96,45 @@ void mover_bateria(Bateria* bat, int largura_tela) {
     
     // Verificar se a bateria está sendo recarregada
     if (bat->recarregando) {
-        bat->tempo_recarga_atual++;
+        // Debug: informar que está recarregando
+        static int last_state = -1;
+        if (last_state != bat->id) {
+            printf("Bateria %d: Está recarregando (parada no recarregador)\n", bat->id);
+            last_state = bat->id;
+        }
         return; // Não move durante a recarga; recarregador controla o fim
     }
     
     // Verificar se a bateria está voltando para sua área original
     if (bat->voltando_para_area_original) {
-        // Ir para o lado direito da ponte (área original)
-        int ponte_fim = 320;
+        int ponte_fim = 370;  // Atualizado para a nova posição da ponte
         if (bat->pos.x < ponte_fim) {
-            bat->direcao = 1; // Ir para direita
+            bat->direcao = 1;
             printf("Bateria %d voltando: indo para direita, pos=%d\n", bat->id, bat->pos.x);
         } else {
-            // Chegou na área original
             bat->voltando_para_area_original = false;
-            // Restaurar direção original baseada no ID
             bat->direcao = (bat->id == 0) ? 1 : -1;
-            bat->tempo_ultimo_disparo = 0; // Resetar timer de disparo
+            bat->tempo_ultimo_disparo = 0;
             printf("Bateria %d chegou na área original! Direção restaurada: %d\n", bat->id, bat->direcao);
         }
     }
     // Verificar se a bateria está sem munição e precisa ir para o recarregador
     else if (bat->foguetes_atual <= 0 && !bat->na_ponte && !bat->voltando_para_area_original) {
-        // Bateria sem munição - deve ir para o recarregador
-        int recarregador_x = 100; // Posição X do recarregador
-        
-        // Debug: imprimir quando bateria fica sem munição
+        int recarregador_x = 100;
         static bool debug_sem_municao = false;
         if (!debug_sem_municao) {
             printf("Bateria %d ficou sem munição! Indo para recarregador em X=%d\n", bat->id, recarregador_x);
             debug_sem_municao = true;
         }
-        
         if (bat->pos.x > recarregador_x) {
-            // Recarregador está à esquerda, bateria deve ir para esquerda
             bat->direcao = -1;
         } else {
-            // Recarregador está à direita, bateria deve ir para direita
             bat->direcao = 1;
         }
-        
-        // Verificar se chegou ao recarregador (considerando a largura da bateria)
         if (bat->pos.x <= recarregador_x + 50 && bat->pos.x + BAT_W >= recarregador_x) {
             bat->recarregando = true;
-            bat->tempo_recarga_atual = 0;
             printf("Bateria %d chegou ao recarregador! Pos: %d, Rec: %d\n", bat->id, bat->pos.x, recarregador_x);
-            debug_sem_municao = false; // Reset para próxima vez
+            debug_sem_municao = false;
             return; // Parar de mover
         }
     }
@@ -161,9 +146,9 @@ void mover_bateria(Bateria* bat, int largura_tela) {
     int limite_esquerdo = 200;  // Início da área central
     int limite_direito = 600 - BAT_W;  // Fim da área central (considerando largura da bateria)
     
-    // Verificar se bateu na ponte (lado direito da ponte)
-    int ponte_inicio = 170;  // Posição X da ponte
-    int ponte_fim = 320;     // Fim da ponte (ponte_inicio + PONTE_LARGURA)
+    // Posições da ponte (atualizadas para a nova posição)
+    int ponte_inicio = 220;  // Posição X da ponte (movida 50px para direita)
+    int ponte_fim = 370;     // Fim da ponte (ponte_inicio + PONTE_LARGURA)
     
     // Declaração externa da variável global
     extern int bateria_atravessando_ponte;

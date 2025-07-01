@@ -16,6 +16,7 @@ typedef struct {
     int tempo_atual;    // Contador atual
     void* bateria_conectada;  // Ponteiro para a bateria que está recarregando
     SDL_Texture* texture;
+    Uint32 tempo_ultimo_tick; // Para controle de tempo real
 } Recarregador;
 
 // Funções do recarregador
